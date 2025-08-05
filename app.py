@@ -65,10 +65,14 @@ def banner_image():
     draw = ImageDraw.Draw(bg)
 # حساب حجم النص DV:BNGX
     text = "DV:BNGX"
-    text_width, text_height = font_small.getsize(text)
+    bbox = draw.textbbox((0, 0), text, font=font_small)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
 
     x_pos = WIDTH - text_width - 10
     y_pos = HEIGHT - text_height - 10
+    draw.text((x_pos, y_pos), text, font=font_small, fill="white")
+
 
 
     draw.text((550, 20), nickname, font=font_large, fill="white")
