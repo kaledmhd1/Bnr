@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
-FONT_PATH = "DejaVuSans-Bold.ttf"
+FONT_PATH = "ARIAL.TTF"
 font_large = ImageFont.truetype(FONT_PATH, 60)
 font_small = ImageFont.truetype(FONT_PATH, 40)
 
