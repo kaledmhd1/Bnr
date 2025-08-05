@@ -66,6 +66,7 @@ def banner_image():
     draw.text((550, 20), nickname, font=font_large, fill="white")
     draw.text((550, 350), guild, font=font_large, fill="white")
     draw.text((WIDTH - 380, HEIGHT - 150), f"Lvl. {level}", font=font_small, fill="white")
+    draw.text((WIDTH - 380, HEIGHT - 90), "DV:BNGX", font=font_small, fill="white")
 
     buf = BytesIO()
     bg.save(buf, format="PNG")
