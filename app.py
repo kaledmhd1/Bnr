@@ -63,16 +63,18 @@ def banner_image():
         bg.paste(pin, (30, 384), pin)
 
     draw = ImageDraw.Draw(bg)
-    # إنشاء خطوط جديدة بالحجم المطلوب
-    font_guild = ImageFont.truetype(FONT_PATH, 120)       # اسم الكلان ×2 من font_large
-    font_dv = ImageFont.truetype(FONT_PATH, 140)          # DV:BNGX أكبر قليلاً من اسم الكلان
+# حساب حجم النص DV:BNGX
+    text = "DV:BNGX"
+    text_width, text_height = draw.textsize(text, font=font_small)
 
-    # رسم النصوص
-    # رسم النصوص
+    # تحديد موقع النص في الزاوية اليمنى السفلى
+    x_pos = WIDTH - text_width - 10
+    y_pos = HEIGHT - text_height - 10
+
     draw.text((550, 20), nickname, font=font_large, fill="white")
-    draw.text((550, 300), guild, font=font_large, fill="white")  # موقع جديد أعلى قليلاً
-    draw.text((WIDTH - 380, HEIGHT - 200), f"Lvl. {level}", font=font_small, fill="white")  # رفع اللفل
-    draw.text((WIDTH - 380, HEIGHT - 130), "DV:BNGX", font=font_small, fill="white")  # تحت اللفل مباشرة
+    draw.text((550, 300), guild, font=font_large, fill="white")
+    draw.text((WIDTH - 380, HEIGHT - 200), f"Lvl. {level}", font=font_small, fill="white")
+    draw.text((x_pos, y_pos), text, font=font_small, fill="white")
 
 
     buf = BytesIO()
