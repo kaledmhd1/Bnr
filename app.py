@@ -2,12 +2,13 @@ from flask import Flask, request, send_file, jsonify
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
+import os
 
 app = Flask(__name__)
 
 # إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
-FONT_PATH = "ARIAL.TTF"
+FONT_PATH = "fonts/Poppins-SemiBold.ttf"  # تأكد من مسار الخط الصحيح في مجلد fonts
 font_large = ImageFont.truetype(FONT_PATH, 60)
 font_small = ImageFont.truetype(FONT_PATH, 40)
 
@@ -63,24 +64,19 @@ def banner_image():
         bg.paste(pin, (30, 384), pin)
 
     draw = ImageDraw.Draw(bg)
-    font_dv = ImageFont.truetype("ARIAL.TTF", 45)  # حجم أكبر بثلاث مرات
+    draw.text((550, 20), nickname, font=font_large, fill="white")
+    draw.text((550, 300), guild, font=font_large, fill="white")
+    draw.text((WIDTH - 380, HEIGHT - 200), f"Lvl. {level}", font=font_small, fill="white")
+
+    # كلمة DV:BNGX في الزاوية السفلية اليسرى بنفس حجم اسم الكلان
+    font_dv = font_large
     text = "DV:BNGX"
     bbox = draw.textbbox((0, 0), text, font=font_dv)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
-
-    x_pos = WIDTH - text_width - 10
+    x_pos = 10
     y_pos = HEIGHT - text_height - 10
-
     draw.text((x_pos, y_pos), text, font=font_dv, fill="white")
-
-
-
-    draw.text((550, 20), nickname, font=font_large, fill="white")
-    draw.text((550, 300), guild, font=font_large, fill="white")
-    draw.text((WIDTH - 380, HEIGHT - 200), f"Lvl. {level}", font=font_small, fill="white")
-    draw.text((x_pos, y_pos), text, font=font_small, fill="white")
-
 
     buf = BytesIO()
     bg.save(buf, format="PNG")
