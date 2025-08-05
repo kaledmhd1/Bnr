@@ -63,7 +63,7 @@ def banner_image():
         bg.paste(pin, (30, 384), pin)
 
     draw = ImageDraw.Draw(bg)
-    font_dv = ImageFont.truetype("ARIAL.TTF", 54)  # حجم أكبر بثلاث مرات
+    font_dv = ImageFont.truetype("ARIAL.TTF", 25)  # حجم أكبر بثلاث مرات
     text = "DV:BNGX"
     bbox = draw.textbbox((0, 0), text, font=font_dv)
     text_width = bbox[2] - bbox[0]
