@@ -68,10 +68,11 @@ def banner_image():
     font_dv = ImageFont.truetype(FONT_PATH, 140)          # DV:BNGX أكبر قليلاً من اسم الكلان
 
     # رسم النصوص
+    # رسم النصوص
     draw.text((550, 20), nickname, font=font_large, fill="white")
-    draw.text((550, 350), guild, font=font_guild, fill="white")
-    draw.text((550, 500), "DV:BNGX", font=font_dv, fill="white")
-    draw.text((WIDTH - 380, HEIGHT - 150), f"Lvl. {level}", font=font_small, fill="white")
+    draw.text((550, 300), guild, font=font_large, fill="white")  # موقع جديد أعلى قليلاً
+    draw.text((WIDTH - 380, HEIGHT - 200), f"Lvl. {level}", font=font_small, fill="white")  # رفع اللفل
+    draw.text((WIDTH - 380, HEIGHT - 130), "DV:BNGX", font=font_small, fill="white")  # تحت اللفل مباشرة
 
 
     buf = BytesIO()
