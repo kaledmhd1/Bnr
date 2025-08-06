@@ -8,6 +8,7 @@ app = Flask(__name__)
 # أبعاد الصورة الرئيسية
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
+AVATAR_SIZE = (412, 412)  # ارتفاع الصورة - الشريط العلوي
 
 # مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
@@ -35,18 +36,6 @@ def fetch_image(url, size=None):
 # توليد رابط الأيقونات
 def get_icon_url(icon_id):
     return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
-
-# دالة لتكبير الخط لملء مساحة معينة
-def get_fitted_font(text, font_path, max_width, max_height, start_size=10):
-    font_size = start_size
-    while True:
-        font = ImageFont.truetype(font_path, font_size)
-        bbox = font.getbbox(text)
-        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        if w >= max_width or h >= max_height:
-            break
-        font_size += 1
-    return ImageFont.truetype(font_path, font_size - 1)
 
 @app.route('/bnr')
 def generate_banner():
@@ -104,15 +93,15 @@ def generate_banner():
 
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار
-    avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
+    # تحميل صورة الأفاتار بالحجم الصحيح
+    avatar_img = fetch_image(get_icon_url(avatar_id), AVATAR_SIZE)
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
     # كتابة الاسم والكلان
-    text_x = 550
+    text_x = 430  # بعد الأفاتار
     draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
 
     # كتابة المستوى أسفل يمين الصورة
     level_text = f"Lv. {level}"
@@ -122,10 +111,13 @@ def generate_banner():
     level_x = WIDTH - w_level - 50
     level_y = HEIGHT - h_level - 20
     draw.text((level_x, level_y), level_text, font=font_level, fill="white")
+
+    # إخراج الصورة
     output = BytesIO()
     img.save(output, format='PNG')
     output.seek(0)
     return send_file(output, mimetype='image/png')
-# تصحيح شرط التشغيل
+
+# تشغيل الخادم
 if __name__ == '__main__':
     app.run()
