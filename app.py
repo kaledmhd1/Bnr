@@ -64,14 +64,12 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # تحميل صورة الشريط الأسود من الرابط
-    bar_img_url = "https://i.imgur.com/rlh5m3N.png"
-    bar_img = fetch_image(bar_img_url, (WIDTH, BAR_HEIGHT))
-
-    if bar_img:
+    # استخدام صورة الشريط المحلية bngx.jpg بحجم الشريط (2048x100)
+    try:
+        bar_img = Image.open("bngx.jpg").convert("RGBA").resize((WIDTH, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bar_img, (0, 0), bar_img)
-    else:
-        # لو فشل التحميل، نرسم مستطيل أسود بدلًا عنه
+    except Exception as e:
+        print(f"Error loading bar image: {e}")
         draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
     # تحميل صورة الأفاتار ولصقها تحت الشريط (يسار الصورة)
