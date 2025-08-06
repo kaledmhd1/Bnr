@@ -129,5 +129,5 @@ def generate_banner():
     output.seek(0)
     return send_file(output, mimetype='image/png')
 
-if name == '__main__':
+if __name__ == '__main__':
     app.run()
