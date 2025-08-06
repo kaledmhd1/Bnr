@@ -9,7 +9,7 @@ WIDTH, HEIGHT = 2048, 512
 FONT_PATH = "ARIAL.TTF"
 
 font_nickname = ImageFont.truetype(FONT_PATH, 150)
-font_large = ImageFont.truetype(FONT_PATH, 120)
+font_large = ImageFont.truetype(FONT_PATH, 90)
 font_level = ImageFont.truetype(FONT_PATH, 100)
 
 def fetch_image(url, size=None):
@@ -89,7 +89,7 @@ def banner_image():
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
     text_x = avatar_width + (WIDTH - avatar_width - text_width) // 15
-    text_y = bar_y - 15
+    text_y = bar_y - 30
     draw.text((text_x, text_y), dev_text, font=font_large, fill="white")
 
     # كتابة النصوص الأخرى فوق الخلفية والصور
