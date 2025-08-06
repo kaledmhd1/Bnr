@@ -66,7 +66,7 @@ def generate_banner():
 
     # استخدام صورة الشريط المحلية bngx.jpg بحجم الشريط (2048x100)
     try:
-        bar_img = Image.open("bngx.jpg").convert("RGBA").resize((WIDTH, BAR_HEIGHT), Image.LANCZOS)
+        bar_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((WIDTH, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bar_img, (0, 0), bar_img)
     except Exception as e:
         print(f"Error loading bar image: {e}")
