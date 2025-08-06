@@ -5,31 +5,65 @@ import requests
 
 app = Flask(__name__)
 
-# إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
 AVATAR_SIZE = (512, 412)
 
-# مسارات الخطوط الأصلية
+# مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
 FONT_MIXED_PATH = "NotoSans-Regular.ttf"
-
-# إضافة خط خاص بالعربية
 FONT_ARABIC_PATH = "NotoSansArabic-Regular.ttf"
+FONT_CJK_PATH = "NotoSansCJK-Regular.otf"  # خط لدعم CJK (صيني، ياباني، كوري)
 
 # تحميل الخطوط
-font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)         # للاسماء الانجليزية
-font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)           # للمستوى
-font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)             # للكلان (لاتيني)
-font_dev = ImageFont.truetype(FONT_ARABIC_PATH, 80)             # لـ DV:BNGX (عربي+انجليزي)
+font_arial = ImageFont.truetype(FONT_TEXT_PATH, 100)
+font_dejavu = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
+font_noto = ImageFont.truetype(FONT_MIXED_PATH, 130)
+font_arabic = ImageFont.truetype(FONT_ARABIC_PATH, 80)
+font_cjk = ImageFont.truetype(FONT_CJK_PATH, 100)
 
 def to_halfwidth(text):
     return text.translate({ord(c): ord(c) - 0xFEE0 for c in text if 0xFF01 <= ord(c) <= 0xFF5E})
 
 def contains_arabic(text):
-    # يفحص هل النص يحتوي على حروف عربية (يوجد منها حاجة لاستخدام الخط العربي)
-    return any('\u0600' <= c <= '\u06FF' or '\u0750' <= c <= '\u077F' or '\u08A0' <= c <= '\u08FF' for c in text)
+    return any('\u0600' <= c <= '\u06FF' for c in text)
+
+def contains_cjk(text):
+    # النطاقات الرئيسية للـ CJK Unified Ideographs
+    return any(
+        (0x4E00 <= ord(c) <= 0x9FFF) or    # CJK Unified Ideographs
+        (0x3400 <= ord(c) <= 0x4DBF) or    # CJK Unified Ideographs Extension A
+        (0x3040 <= ord(c) <= 0x309F) or    # Hiragana (ياباني)
+        (0x30A0 <= ord(c) <= 0x30FF) or    # Katakana (ياباني)
+        (0xAC00 <= ord(c) <= 0xD7AF)       # Hangul Syllables (كوري)
+        for c in text
+    )
+
+def select_font_for_text(text, size):
+    text = to_halfwidth(text)
+    if contains_arabic(text):
+        return ImageFont.truetype(FONT_ARABIC_PATH, size)
+    elif contains_cjk(text):
+        return ImageFont.truetype(FONT_CJK_PATH, size)
+    else:
+        # فقط نص لاتيني أو رموز أخرى، نستخدم NotoSans أو Arial حسب الحجم
+        if size > 100:
+            return ImageFont.truetype(FONT_MIXED_PATH, size)
+        else:
+            return ImageFont.truetype(FONT_TEXT_PATH, size)
+
+def fetch_image(url, size=None):
+    try:
+        res = requests.get(url, timeout=5)
+        res.raise_for_status()
+        img = Image.open(BytesIO(res.content)).convert("RGBA")
+        if size:
+            img = img.resize(size, Image.LANCZOS)
+        return img
+    except Exception as e:
+        print(f"Error fetching image: {e}")
+        return None
 
 @app.route('/bnr')
 def generate_banner():
@@ -58,7 +92,6 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل البنر الخلفي
     banner_img_full = fetch_image(f"https://freefireinfo.vercel.app/icon?id={banner_id}")
     banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
     if banner_img_full:
@@ -71,15 +104,15 @@ def generate_banner():
     # الشريط الأسود العلوي
     draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
-    # bngx في الشريط
     try:
         bngx_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bngx_img, (0, 0), bngx_img)
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX (باستخدام الخط العربي ليدعم العربي والانجليزي)
+    # كتابة DV:BNGX
     dev_text = to_halfwidth("DV:BNGX")
+    font_dev = select_font_for_text(dev_text, 80)
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
@@ -87,26 +120,23 @@ def generate_banner():
     text_y = (BAR_HEIGHT - h_dev) // 2
     draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار
+    # الأفاتار
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
-    # كتابة الاسم (إذا كان عربي، استخدم الخط العربي، وإلا الخط الإنجليزي)
-    if contains_arabic(nickname):
-        draw.text((530, BAR_HEIGHT + 20), nickname, font=font_dev, fill="white")
-    else:
-        draw.text((530, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
+    # الاسم
+    font_nickname = select_font_for_text(nickname, 130)
+    draw.text((530, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
 
-    # كتابة الكلان (إن وجد، ونفس قاعدة الخطوط)
+    # الكلان
     if clan_name.strip():
-        if contains_arabic(clan_name):
-            draw.text((530, BAR_HEIGHT + 230), clan_name, font=font_dev, fill="white")
-        else:
-            draw.text((530, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
+        font_clan = select_font_for_text(clan_name, 100)
+        draw.text((530, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
 
-    # كتابة المستوى
+    # المستوى
     level_text = f"Lv. {level}"
+    font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
     bbox_level = font_level.getbbox(level_text)
     w_level = bbox_level[2] - bbox_level[0]
     h_level = bbox_level[3] - bbox_level[1]
@@ -114,23 +144,10 @@ def generate_banner():
     level_y = HEIGHT - h_level - 20
     draw.text((level_x, level_y), level_text, font=font_level, fill="white")
 
-    # إخراج الصورة
     output = BytesIO()
     img.save(output, format='PNG')
     output.seek(0)
     return send_file(output, mimetype='image/png')
-
-def fetch_image(url, size=None):
-    try:
-        res = requests.get(url, timeout=5)
-        res.raise_for_status()
-        img = Image.open(BytesIO(res.content)).convert("RGBA")
-        if size:
-            img = img.resize(size, Image.LANCZOS)
-        return img
-    except Exception as e:
-        print(f"Error fetching image: {e}")
-        return None
 
 if __name__ == '__main__':
     app.run()
