@@ -100,7 +100,7 @@ def generate_banner():
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
     dev_x = 512 + ((dev_area_width - w_dev) // 2)
-    dev_y = (BAR_HEIGHT - h_dev) // 2
+    dev_y = ((BAR_HEIGHT - h_dev) // 2) - 10  # رفع النص داخل الشريط الأسود قليلاً
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
     # تحميل صورة الأفاتار
