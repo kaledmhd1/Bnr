@@ -90,17 +90,18 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX على كامل المساحة المتبقية من الشريط
+    # كتابة DV:BNGX بحجم 60 وبمنتصف الشريط الأسود
     dev_text = "DV:BNGX"
     dev_area_width = WIDTH - 512 - 40  # المساحة بعد bngx مع بعض الهوامش
-    dev_area_height = BAR_HEIGHT
-    font_dev = get_fitted_font(dev_text, FONT_MIXED_PATH, dev_area_width, dev_area_height)
+    font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
 
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
+
     dev_x = 512 + ((dev_area_width - w_dev) // 2)
-    dev_y = ((BAR_HEIGHT - h_dev) // 2) - 10  # رفع النص داخل الشريط الأسود قليلاً
+    dev_y = (BAR_HEIGHT - h_dev) // 2  # وسط عموديًا داخل الشريط
+
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
     # تحميل صورة الأفاتار
