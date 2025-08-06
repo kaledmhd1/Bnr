@@ -80,7 +80,9 @@ def generate_banner():
 
     # كتابة DV:BNGX في منتصف الشريط الرمادي السفلي
     dev_text = "DV:BNGX"
-    w, h = font_dev.getsize(dev_text)  # التعديل هنا لتفادي الخطأ
+    bbox = font_dev.getbbox(dev_text)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
     dev_x = 500 + (WIDTH - 500 - w) // 2
     dev_y = bar_y + (bar_height - h) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
