@@ -91,7 +91,7 @@ def generate_banner():
     # الكتابة على يمين الأفاتار
     text_x = 550
     draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 200), f"Lv. {level}", font=font_level, fill="white")
+    draw.text((WIDTH - w_level - 50, BAR_HEIGHT + 20), f"Lv. {level}", font=font_level, fill="white")
     draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
 
     output = BytesIO()
