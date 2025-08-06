@@ -6,6 +6,8 @@ import requests
 app = Flask(__name__)
 
 WIDTH, HEIGHT = 2048, 512
+BAR_HEIGHT = 100
+
 FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
 FONT_MIXED_PATH = "NotoSans-Regular.ttf"
@@ -13,7 +15,7 @@ FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
 font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
-font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)  # حجم أكبر للنص
+font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
 
 def fetch_image(url, size=None):
     try:
@@ -57,34 +59,32 @@ def generate_banner():
     # تحميل صورة البنر كخلفية
     banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
     if not banner_img:
-        # لو فشل التحميل، نستخدم خلفية داكنة عادية
         banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
 
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # تحميل صورة الأفاتار
+    # رسم الشريط الأسود في الأعلى
+    draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
+
+    # تحميل صورة الأفاتار ولصقها تحت الشريط (يسار الصورة)
     avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
     if avatar_img:
-        img.paste(avatar_img, (0, 0), avatar_img)
+        img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
-    # رسم الشريط الرمادي في الأسفل (ارتفاع 100 بكسل)
-    bar_height = 100
-    bar_y = HEIGHT - bar_height
-    draw.rectangle([(500, bar_y), (WIDTH, HEIGHT)], fill=(40, 40, 40, 255))
+    # الكتابة على الصورة (النص يبدأ تحت الشريط الأسود، على يمين الأفاتار)
+    text_x = 550
+    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 200), f"Lv. {level}", font=font_level, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
 
-    # كتابة النصوص فوق الصورة والشريط الرمادي
-    draw.text((550, 90), nickname, font=font_nickname, fill="white")
-    draw.text((550, 260), f"Lv. {level}", font=font_level, fill="white")
-    draw.text((550, 360), clan_name, font=font_clan, fill="white")
-
-    # كتابة DV:BNGX في منتصف الشريط الرمادي السفلي
+    # كلمة DV:BNGX على يمين الشريط الأسود في الأعلى
     dev_text = "DV:BNGX"
     bbox = font_dev.getbbox(dev_text)
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
-    dev_x = 500 + (WIDTH - 500 - w) // 2
-    dev_y = bar_y + (bar_height - h) // 2
+    dev_x = WIDTH - w - 20  # 20 بكسل مسافة من الطرف الأيمن
+    dev_y = (BAR_HEIGHT - h) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
     output = BytesIO()
