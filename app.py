@@ -5,111 +5,86 @@ import requests
 
 app = Flask(__name__)
 
-# أبعاد الصورة الرئيسية
+# إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
-AVATAR_SIZE = (512, 412)
 
-# مسارات الخطوط
-FONT_TEXT_PATH = "ARIAL.TTF"
-FONT_SYMBOL_PATH = "DejaVuSans.ttf"
-FONT_MIXED_PATH = "NotoSans-Regular.ttf"
+# الخطوط
+FONT_MIXED_PATH = "NotoSansArabic-Regular.ttf"  # يدعم العربية واللاتينية والزخارف
 
-# تحميل الخطوط
+# إعدادات الخطوط
 font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
-font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
-font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
+font_level = ImageFont.truetype(FONT_MIXED_PATH, 90)
+font_clan = ImageFont.truetype(FONT_MIXED_PATH, 100)
+font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
 
-def fetch_image(url, size=None):
-    try:
-        res = requests.get(url, timeout=5)
-        res.raise_for_status()
-        img = Image.open(BytesIO(res.content)).convert("RGBA")
-        if size:
-            img = img.resize(size, Image.LANCZOS)
-        return img
-    except Exception as e:
-        print(f"Error fetching image: {e}")
-        return None
-
-def get_icon_url(icon_id):
-    return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
-
-@app.route('/bnr')
+@app.route("/bnr")
 def generate_banner():
     uid = request.args.get("uid")
     region = request.args.get("region", "me")
 
     if not uid:
-        return "UID مطلوب", 400
+        return "يرجى تحديد UID", 400
 
+    # جلب بيانات اللاعب من API خارجي
+    info_url = f"https://info-ch9ayfa.vercel.app/{uid}?region={region}"
     try:
-        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
-        res = requests.get(api_url, timeout=5).json()
-
-        basic = res.get("basicInfo", {})
-        clan = res.get("clanBasicInfo", {})
-
-        nickname = basic.get("nickname", "NoName")
-        level = basic.get("level", 1)
-        avatar_id = basic.get("headPic", 900000013)
-        banner_id = basic.get("bannerId", 900000014)
-        clan_name = clan.get("clanName", "No Clan")
-
+        response = requests.get(info_url)
+        data = response.json()
     except Exception as e:
-        return f"❌ فشل في جلب البيانات: {e}", 500
+        return f"فشل في جلب البيانات: {e}", 500
 
-    # إنشاء صورة فارغة للخلفية
-    banner_img_full = fetch_image(get_icon_url(banner_id))
-    banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
-    if banner_img_full:
-        banner_part = banner_img_full.resize((WIDTH - 512, HEIGHT), Image.LANCZOS)
-        banner_img.paste(banner_part, (512, 0))
+    nickname = data.get("nickname", "Unknown")
+    level = data.get("level", "??")
+    clan = data.get("clan", "")
+    avatar_url = data.get("avatar")
 
-    img = banner_img.copy()
-    draw = ImageDraw.Draw(img)
+    # إنشاء صورة جديدة
+    banner = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
 
-    # الشريط الأسود العلوي
-    draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
+    # جلب صورة البنر
+    banner_url = data.get("banner")
+    if banner_url:
+        try:
+            banner_img = Image.open(BytesIO(requests.get(banner_url).content)).convert("RGB")
+            banner_img = banner_img.resize((WIDTH, HEIGHT))
+            banner.paste(banner_img, (0, 0))
+        except:
+            pass  # تجاهل إذا فشل تحميل البنر
 
-    # bngx في الشريط
-    try:
-        bngx_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
-        img.paste(bngx_img, (0, 0), bngx_img)
-    except Exception as e:
-        print(f"Error loading bngx image: {e}")
+    # رسم الشريط الأسود العلوي
+    draw = ImageDraw.Draw(banner)
+    draw.rectangle((0, 0, WIDTH, BAR_HEIGHT), fill="black")
 
-    # كتابة DV:BNGX بعد صورة bngx
+    # جلب صورة الأفاتار
+    if avatar_url:
+        try:
+            avatar_img = Image.open(BytesIO(requests.get(avatar_url).content)).convert("RGB")
+            avatar_img = avatar_img.resize((350, 350))
+            banner.paste(avatar_img, (80, 80))
+        except:
+            pass
+
+    # كتابة الاسم
+    draw.text((480, 120), nickname, font=font_nickname, fill="white")
+
+    # كتابة LV.XX
+    draw.text((480, 250), f"Lv. {level}", font=font_level, fill="white")
+
+    # اسم الكلان إذا موجود
+    if clan:
+        draw.text((WIDTH - 900, 120), clan, font=font_clan, fill="white")
+
+    # الكتابة DV:BNGX على الشريط الأسود
     dev_text = "DV:BNGX"
-    font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
-    text_start_x = 512 + 20
-    text_y = (BAR_HEIGHT - font_dev.getbbox(dev_text)[3]) // 2
-    draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
+    w_dev, h_dev = draw.textsize(dev_text, font=font_dev)
+    draw.text((WIDTH - w_dev - 40, (BAR_HEIGHT - h_dev) // 2), dev_text, font=font_dev, fill="white")
 
-    # الأفاتار
-    avatar_img = fetch_image(get_icon_url(avatar_id), AVATAR_SIZE)
-    if avatar_img:
-        img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
+    # تحويل الصورة إلى استجابة Flask
+    img_io = BytesIO()
+    banner.save(img_io, "PNG")
+    img_io.seek(0)
+    return send_file(img_io, mimetype="image/png")
 
-    # الاسم والكلان
-    text_x = 530
-    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
-
-    # المستوى
-    level_text = f"Lv. {level}"
-    bbox_level = font_level.getbbox(level_text)
-    w_level = bbox_level[2] - bbox_level[0]
-    h_level = bbox_level[3] - bbox_level[1]
-    level_x = WIDTH - w_level - 50
-    level_y = HEIGHT - h_level - 20
-    draw.text((level_x, level_y), level_text, font=font_level, fill="white")
-
-    # إخراج الصورة
-    output = BytesIO()
-    img.save(output, format='PNG')
-    output.seek(0)
-    return send_file(output, mimetype='image/png')
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()
