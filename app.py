@@ -5,12 +5,12 @@ import requests
 
 app = Flask(__name__)
 
-WIDTH, HEIGHT = 2048, 512
+WIDTH, HEIGHT = 512, 512
 FONT_PATH = "ARIAL.TTF"
 
-font_nickname = ImageFont.truetype(FONT_PATH, 150)
-font_large = ImageFont.truetype(FONT_PATH, 90)
-font_level = ImageFont.truetype(FONT_PATH, 100)
+font_nickname = ImageFont.truetype(FONT_PATH, 40)
+font_large = ImageFont.truetype(FONT_PATH, 30)
+font_level = ImageFont.truetype(FONT_PATH, 35)
 
 def fetch_image(url, size=None):
     try:
@@ -51,15 +51,15 @@ def banner_image():
     guild = clan.get("clanName", "No Guild")
 
     bg = fetch_image(get_url(banner_id), (WIDTH, HEIGHT))
-    avatar = fetch_image(get_url(avatar_id), (512, 512))
-    pin = fetch_image(get_url(pin_id), (128, 128)) if pin_id else None
+    avatar = fetch_image(get_url(avatar_id), (128, 128))
+    pin = fetch_image(get_url(pin_id), (64, 64)) if pin_id else None
 
     if not bg or not avatar:
         return jsonify({"error": "Không tải được ảnh"}), 500
 
-    bar_height = 100
+    bar_height = 80
     bar_y = HEIGHT - bar_height
-    avatar_width = 512
+    avatar_width = 128
 
     # اقتصاص الخلفية من الأعلى حتى بداية الشريط الرصاصي
     bg_cropped = bg.crop((0, 0, WIDTH, bar_y))
@@ -73,7 +73,7 @@ def banner_image():
     # لصق الأفاتار والصور الأخرى
     final_img.paste(avatar, (0, 0), avatar)
     if pin:
-        final_img.paste(pin, (30, 384), pin)
+        final_img.paste(pin, (10, HEIGHT - 70), pin)
 
     draw = ImageDraw.Draw(final_img)
 
@@ -87,15 +87,14 @@ def banner_image():
     dev_text = "DEV:BNGX"
     text_bbox = font_large.getbbox(dev_text)
     text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
     text_x = avatar_width + (WIDTH - avatar_width - text_width) // 15
-    text_y = bar_y - 27
+    text_y = bar_y - 20
     draw.text((text_x, text_y), dev_text, font=font_large, fill="white")
 
     # كتابة النصوص الأخرى فوق الخلفية والصور
-    draw.text((550, 20), nickname, font=font_nickname, fill="white")
-    draw.text((550, 250), guild, font=font_large, fill="white")
-    draw.text((WIDTH - 320, HEIGHT - 230), f"Lvl. {level}", font=font_level, fill="white")
+    draw.text((150, 20), nickname, font=font_nickname, fill="white")
+    draw.text((150, 200), guild, font=font_large, fill="white")
+    draw.text((WIDTH - 100, HEIGHT - 60), f"Lvl. {level}", font=font_level, fill="white")
 
     buf = BytesIO()
     final_img.save(buf, format="PNG")
