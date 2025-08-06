@@ -21,11 +21,14 @@ font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
 
 # دالة جلب صورة من رابط
-def fetch_image(url):
+def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
         res.raise_for_status()
-        return Image.open(BytesIO(res.content)).convert("RGBA")
+        img = Image.open(BytesIO(res.content)).convert("RGBA")
+        if size:
+            img = img.resize(size, Image.LANCZOS)
+        return img
     except Exception as e:
         print(f"Error fetching image: {e}")
         return None
@@ -58,25 +61,10 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل البنر مع الحفاظ على النسبة دون تشويه (fit ثم crop من الوسط)
-    banner_orig = fetch_image(get_icon_url(banner_id))
-    if not banner_orig:
+    # تحميل خلفية البنر
+    banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
+    if not banner_img:
         banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
-    else:
-        orig_ratio = banner_orig.width / banner_orig.height
-        target_ratio = WIDTH / HEIGHT
-
-        if orig_ratio > target_ratio:
-            new_height = HEIGHT
-            new_width = int(orig_ratio * new_height)
-        else:
-            new_width = WIDTH
-            new_height = int(new_width / orig_ratio)
-
-        resized = banner_orig.resize((new_width, new_height), Image.LANCZOS)
-        x = (new_width - WIDTH) // 2
-        y = (new_height - HEIGHT) // 2
-        banner_img = resized.crop((x, y, x + WIDTH, y + HEIGHT))
 
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
@@ -91,21 +79,23 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX في منتصف الشريط الأسود
+    # كتابة DV:BNGX بحجم 60 وبمنتصف الشريط الأسود
     dev_text = "DV:BNGX"
-    dev_area_width = WIDTH - 512 - 40
+    dev_area_width = WIDTH - 512 - 40  # المساحة بعد bngx مع بعض الهوامش
     font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
+
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
+
     dev_x = 512 + ((dev_area_width - w_dev) // 2)
-    dev_y = (BAR_HEIGHT - h_dev) // 2
+    dev_y = (BAR_HEIGHT - h_dev) // 2  # وسط عموديًا داخل الشريط
+
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار بالحجم المناسب
-    avatar_img = fetch_image(get_icon_url(avatar_id))
+    # تحميل صورة الأفاتار بالحجم الصحيح
+    avatar_img = fetch_image(get_icon_url(avatar_id), AVATAR_SIZE)
     if avatar_img:
-        avatar_img = avatar_img.resize(AVATAR_SIZE, Image.LANCZOS)
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
     # كتابة الاسم والكلان
