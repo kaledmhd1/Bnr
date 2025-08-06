@@ -94,8 +94,8 @@ def banner_image():
 
     # كتابة النصوص الأخرى فوق الخلفية والصور
     draw.text((550, 20), nickname, font=font_nickname, fill="white")
-    draw.text((550, 280), guild, font=font_large, fill="white")
-    draw.text((WIDTH - 320, HEIGHT - 200), f"Lvl. {level}", font=font_level, fill="white")
+    draw.text((550, 250), guild, font=font_large, fill="white")
+    draw.text((WIDTH - 320, HEIGHT - 230), f"Lvl. {level}", font=font_level, fill="white")
 
     buf = BytesIO()
     final_img.save(buf, format="PNG")
