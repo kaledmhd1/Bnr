@@ -64,8 +64,15 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # رسم الشريط الأسود في الأعلى
-    draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
+    # تحميل صورة الشريط الأسود من الرابط
+    bar_img_url = "https://i.imgur.com/rlh5m3N.png"
+    bar_img = fetch_image(bar_img_url, (WIDTH, BAR_HEIGHT))
+
+    if bar_img:
+        img.paste(bar_img, (0, 0), bar_img)
+    else:
+        # لو فشل التحميل، نرسم مستطيل أسود بدلًا عنه
+        draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
     # تحميل صورة الأفاتار ولصقها تحت الشريط (يسار الصورة)
     avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
