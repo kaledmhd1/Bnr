@@ -56,7 +56,7 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل صورة الخلفية
+    # تحميل خلفية البنر
     banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
     if not banner_img:
         banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
@@ -64,24 +64,26 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # لصق صورة bngx فوق الأفاتار فقط (عرض 512 وطول 100)
-    try:
-        bar_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
-        img.paste(bar_img, (0, 0), bar_img)
-    except Exception as e:
-        print(f"Error loading bar image: {e}")
-        draw.rectangle([(0, 0), (512, BAR_HEIGHT)], fill=(0, 0, 0, 255))
+    # رسم الشريط الأسود بطول الصورة (2048 × 100)
+    draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
-    # كتابة DV:BNGX على يمين صورة bar
+    # لصق صورة bngx فوق الأفاتار على الشريط (512 × 100)
+    try:
+        bngx_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
+        img.paste(bngx_img, (0, 0), bngx_img)
+    except Exception as e:
+        print(f"Error loading bngx image: {e}")
+
+    # كتابة DV:BNGX على يمين صورة bngx
     dev_text = "DV:BNGX"
     bbox = font_dev.getbbox(dev_text)
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
-    dev_x = 512 + 20  # تبدأ بعد نهاية صورة bar
+    dev_x = 512 + 20
     dev_y = (BAR_HEIGHT - h) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار ولصقها تحت الشريط
+    # تحميل صورة الأفاتار أسفل الشريط
     avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
