@@ -5,18 +5,22 @@ import requests
 
 app = Flask(__name__)
 
+# أبعاد الصورة الرئيسية
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
 
+# مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
 FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 
+# تحميل الخطوط
 font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
 font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
 font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
 
+# دالة لجلب صورة من رابط
 def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
@@ -29,9 +33,11 @@ def fetch_image(url, size=None):
         print(f"Error fetching image: {e}")
         return None
 
+# دالة لتوليد رابط الصورة من ID
 def get_icon_url(icon_id):
     return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
 
+# مسار الـ API الأساسي
 @app.route('/bnr')
 def generate_banner():
     uid = request.args.get("uid")
@@ -41,6 +47,7 @@ def generate_banner():
         return "UID مطلوب", 400
 
     try:
+        # جلب البيانات من API
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api_url, timeout=5).json()
 
@@ -64,10 +71,10 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # رسم الشريط الأسود بطول الصورة (2048 × 100)
+    # رسم الشريط الأسود العلوي
     draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
-    # لصق صورة bngx فوق الأفاتار على الشريط (512 × 100)
+    # لصق صورة bngx في الشريط
     try:
         bngx_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bngx_img, (0, 0), bngx_img)
@@ -76,24 +83,34 @@ def generate_banner():
 
     # كتابة DV:BNGX على يمين صورة bngx
     dev_text = "DV:BNGX"
-    bbox = font_dev.getbbox(dev_text)
-    w = bbox[2] - bbox[0]
-    h = bbox[3] - bbox[1]
+    bbox_dev = font_dev.getbbox(dev_text)
+    w_dev = bbox_dev[2] - bbox_dev[0]
+    h_dev = bbox_dev[3] - bbox_dev[1]
     dev_x = 512 + 20
-    dev_y = (BAR_HEIGHT - h) // 2
+    dev_y = (BAR_HEIGHT - h_dev) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار أسفل الشريط
+    # تحميل صورة الأفاتار
     avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
     # الكتابة على يمين الأفاتار
     text_x = 550
-    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((WIDTH - w_level - 50, BAR_HEIGHT + 20), f"Lv. {level}", font=font_level, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
+    nickname_y = BAR_HEIGHT + 20
+    clan_y = BAR_HEIGHT + 300
 
+    draw.text((text_x, nickname_y), nickname, font=font_nickname, fill="white")
+
+    # حساب حجم نص المستوى
+    level_text = f"Lv. {level}"
+    bbox_level = font_level.getbbox(level_text)
+    w_level = bbox_level[2] - bbox_level[0]
+    draw.text((WIDTH - w_level - 50, nickname_y), level_text, font=font_level, fill="white")
+
+    draw.text((text_x, clan_y), clan_name, font=font_clan, fill="white")
+
+    # إخراج الصورة
     output = BytesIO()
     img.save(output, format='PNG')
     output.seek(0)
