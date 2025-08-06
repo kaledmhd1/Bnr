@@ -14,7 +14,7 @@ FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
 FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 FONT_ARABIC_PATH = "NotoSansArabic-Regular.ttf"
-FONT_CJK_PATH = "NotoSansCJK-Regular.otf"  # خط لدعم CJK (صيني، ياباني، كوري)
+FONT_CJK_PATH = "NotoSansCJKjp-Regular.otf"  # خط لدعم CJK (صيني، ياباني، كوري)
 
 # تحميل الخطوط
 font_arial = ImageFont.truetype(FONT_TEXT_PATH, 100)
