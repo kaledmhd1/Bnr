@@ -25,7 +25,7 @@ def generate_banner():
     
     # جلب معلومات اللاعب
     try:
-        info = requests.get(f"https://razor-info.vercel.app/player-info?uid={uid}&region=me").json()
+        info = requests.get(f"https://razor-info.vercel.app/player-info?uid={uid}&region={uid}").json()
         nickname = info["nickname"]
         level = info["level"]
         clan = info.get("clan", {}).get("name", "")
