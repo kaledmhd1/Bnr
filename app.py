@@ -81,8 +81,8 @@ def generate_banner():
 
     # كتابة DV:BNGX بحجم 60 وبمنتصف الشريط الأسود
     dev_text = "DV:BNGX"
-    dev_area_width = WIDTH - 512 - 40  # المساحة بعد bngx مع بعض الهوامش
-    font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
+    dev_area_width = WIDTH - 512 - 20  # المساحة بعد bngx مع بعض الهوامش
+    font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
 
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
