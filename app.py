@@ -8,21 +8,30 @@ app = Flask(__name__)
 # إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
+AVATAR_SIZE = (512, 412)
 
-# الخطوط
-FONT_MIXED_PATH = "NotoSansArabic-Regular.ttf"  # خط يدعم العربية واللاتينية
+# مسارات الخطوط الأصلية
+FONT_TEXT_PATH = "ARIAL.TTF"
+FONT_SYMBOL_PATH = "DejaVuSans.ttf"
+FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 
-# إعدادات الخطوط
-font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
-font_level = ImageFont.truetype(FONT_MIXED_PATH, 90)
-font_clan = ImageFont.truetype(FONT_MIXED_PATH, 100)
-font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
+# إضافة خط خاص بالعربية
+FONT_ARABIC_PATH = "NotoSansArabic-Regular.ttf"
 
-# دالة تحويل الحروف Fullwidth إلى عادية
+# تحميل الخطوط
+font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)         # للاسماء الانجليزية
+font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)           # للمستوى
+font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)             # للكلان (لاتيني)
+font_dev = ImageFont.truetype(FONT_ARABIC_PATH, 80)             # لـ DV:BNGX (عربي+انجليزي)
+
 def to_halfwidth(text):
     return text.translate({ord(c): ord(c) - 0xFEE0 for c in text if 0xFF01 <= ord(c) <= 0xFF5E})
 
-@app.route("/bnr")
+def contains_arabic(text):
+    # يفحص هل النص يحتوي على حروف عربية (يوجد منها حاجة لاستخدام الخط العربي)
+    return any('\u0600' <= c <= '\u06FF' or '\u0750' <= c <= '\u077F' or '\u08A0' <= c <= '\u08FF' for c in text)
+
+@app.route('/bnr')
 def generate_banner():
     uid = request.args.get("uid")
     region = request.args.get("region", "me")
@@ -30,24 +39,26 @@ def generate_banner():
     if not uid:
         return "يرجى تحديد UID", 400
 
-    # جلب بيانات اللاعب من API خارجي
-    info_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
     try:
-        response = requests.get(info_url, timeout=5)
-        data = response.json()
+        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
+        res = requests.get(api_url, timeout=5).json()
+
+        basic = res.get("basicInfo", {})
+        clan = res.get("clanBasicInfo", {})
+
+        nickname_raw = basic.get("nickname", "NoName")
+        clan_name_raw = clan.get("clanName", "No Clan")
+
+        nickname = to_halfwidth(nickname_raw)
+        clan_name = to_halfwidth(clan_name_raw)
+
+        level = basic.get("level", 1)
+        avatar_id = basic.get("headPic", 900000013)
+        banner_id = basic.get("bannerId", 900000014)
     except Exception as e:
-        return f"فشل في جلب البيانات: {e}", 500
+        return f"❌ فشل في جلب البيانات: {e}", 500
 
-    basic = data.get("basicInfo", {})
-    clan = data.get("clanBasicInfo", {})
-
-    nickname = to_halfwidth(basic.get("nickname", "NoName"))
-    level = basic.get("level", 1)
-    avatar_id = basic.get("headPic", 900000013)
-    banner_id = basic.get("bannerId", 900000014)
-    clan_name = to_halfwidth(clan.get("clanName", "No Clan"))
-
-    # إنشاء صورة فارغة للخلفية
+    # تحميل البنر الخلفي
     banner_img_full = fetch_image(f"https://freefireinfo.vercel.app/icon?id={banner_id}")
     banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
     if banner_img_full:
@@ -67,7 +78,7 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX بعد صورة bngx
+    # كتابة DV:BNGX (باستخدام الخط العربي ليدعم العربي والانجليزي)
     dev_text = to_halfwidth("DV:BNGX")
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
@@ -77,14 +88,22 @@ def generate_banner():
     draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
 
     # تحميل صورة الأفاتار
-    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", (512, 412))
+    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
-    # الاسم والكلان
-    text_x = 530
-    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
+    # كتابة الاسم (إذا كان عربي، استخدم الخط العربي، وإلا الخط الإنجليزي)
+    if contains_arabic(nickname):
+        draw.text((530, BAR_HEIGHT + 20), nickname, font=font_dev, fill="white")
+    else:
+        draw.text((530, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
+
+    # كتابة الكلان (إن وجد، ونفس قاعدة الخطوط)
+    if clan_name.strip():
+        if contains_arabic(clan_name):
+            draw.text((530, BAR_HEIGHT + 230), clan_name, font=font_dev, fill="white")
+        else:
+            draw.text((530, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
 
     # كتابة المستوى
     level_text = f"Lv. {level}"
