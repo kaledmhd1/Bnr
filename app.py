@@ -5,14 +5,13 @@ import requests
 
 app = Flask(__name__)
 
-# إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
 FONT_PATH = "ARIAL.TTF"
-font_nickname = ImageFont.truetype(FONT_PATH, 130)  # خط أكبر لاسم اللاعب فقط
-font_large = ImageFont.truetype(FONT_PATH, 90)     # حجم افتراضي للكلان و DEV:BNGX
-font_level = ImageFont.truetype(FONT_PATH, 75)     # حجم اللفل
 
-# دالة جلب الصور
+font_nickname = ImageFont.truetype(FONT_PATH, 150)
+font_large = ImageFont.truetype(FONT_PATH, 120)
+font_level = ImageFont.truetype(FONT_PATH, 100)
+
 def fetch_image(url, size=None):
     try:
         res = requests.get(url)
@@ -24,7 +23,6 @@ def fetch_image(url, size=None):
     except:
         return None
 
-# دالة توليد رابط الأيقونة
 def get_url(icon_id):
     return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
 
@@ -34,7 +32,7 @@ def banner_image():
     if not uid:
         return jsonify({"error": "Thiếu uid"}), 400
 
-    region = "me"  # نجبر دائمًا على "me"
+    region = "me"
 
     try:
         api = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
@@ -59,18 +57,48 @@ def banner_image():
     if not bg or not avatar:
         return jsonify({"error": "Không tải được ảnh"}), 500
 
-    bg.paste(avatar, (0, 0), avatar)
-    if pin:
-        bg.paste(pin, (30, 384), pin)
+    bar_height = 100
+    bar_y = HEIGHT - bar_height
+    avatar_width = 512
 
-    draw = ImageDraw.Draw(bg)
-    draw.text((550, 20), nickname, font=font_nickname, fill="white")  # اسم اللاعب بخط أكبر
-    draw.text((550, 350), guild, font=font_large, fill="white")       # حجم افتراضي للكلان
-    draw.text((WIDTH - 260, HEIGHT - 200), f"Lvl. {level}", font=font_level, fill="white")
-    draw.text((WIDTH - 460, HEIGHT - 90), "DEV:BNGX", font=font_large, fill="white")
+    # اقتصاص الخلفية من الأعلى حتى بداية الشريط الرصاصي
+    bg_cropped = bg.crop((0, 0, WIDTH, bar_y))
+
+    # إنشاء صورة جديدة بحجم كامل البنر
+    final_img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+
+    # لصق الخلفية المقتصة في الأعلى
+    final_img.paste(bg_cropped, (0, 0))
+
+    # لصق الأفاتار والصور الأخرى
+    final_img.paste(avatar, (0, 0), avatar)
+    if pin:
+        final_img.paste(pin, (30, 384), pin)
+
+    draw = ImageDraw.Draw(final_img)
+
+    # رسم الشريط الرصاصي في الأسفل
+    draw.rectangle(
+        [(avatar_width, bar_y), (WIDTH, HEIGHT)],
+        fill=(100, 100, 100, 230)
+    )
+
+    # كتابة DEV:BNGX في وسط الشريط الرمادي
+    dev_text = "DEV:BNGX"
+    text_bbox = font_large.getbbox(dev_text)
+    text_width = text_bbox[2] - text_bbox[0]
+    text_height = text_bbox[3] - text_bbox[1]
+    text_x = avatar_width + (WIDTH - avatar_width - text_width) // 15
+    text_y = bar_y - 15
+    draw.text((text_x, text_y), dev_text, font=font_large, fill="white")
+
+    # كتابة النصوص الأخرى فوق الخلفية والصور
+    draw.text((550, 20), nickname, font=font_nickname, fill="white")
+    draw.text((550, 280), guild, font=font_large, fill="white")
+    draw.text((WIDTH - 320, HEIGHT - 200), f"Lvl. {level}", font=font_level, fill="white")
 
     buf = BytesIO()
-    bg.save(buf, format="PNG")
+    final_img.save(buf, format="PNG")
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
 
