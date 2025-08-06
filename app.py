@@ -2,28 +2,48 @@ from flask import Flask, request, send_file, jsonify
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
+import unicodedata
 
 app = Flask(__name__)
 
 WIDTH, HEIGHT = 2048, 512
+
 FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
+FONT_CJK_PATH = "NotoSansCJK-Regular.otf"
 
-font_nickname = ImageFont.truetype(FONT_TEXT_PATH, 150)
-font_large = ImageFont.truetype(FONT_TEXT_PATH, 90)
-font_level = ImageFont.truetype(FONT_TEXT_PATH, 100)
+font_text_large = ImageFont.truetype(FONT_TEXT_PATH, 150)
+font_text_medium = ImageFont.truetype(FONT_TEXT_PATH, 90)
+font_text_level = ImageFont.truetype(FONT_TEXT_PATH, 100)
 
-font_symbol_nickname = ImageFont.truetype(FONT_SYMBOL_PATH, 150)
-font_symbol_large = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
+font_symbol_large = ImageFont.truetype(FONT_SYMBOL_PATH, 150)
+font_symbol_medium = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_symbol_level = ImageFont.truetype(FONT_SYMBOL_PATH, 100)
 
-def is_symbol(ch):
-    return not (u'\u0600' <= ch <= u'\u06FF' or ch.isalnum())
+font_cjk = ImageFont.truetype(FONT_CJK_PATH, 100)
 
-def draw_text_mixed(draw, pos, text, font_text, font_symbols, fill):
+def is_symbol(ch):
+    cat = unicodedata.category(ch)
+    # تحقق من نطاقات الحروف الكورية (Hangul)
+    if 0x1100 <= ord(ch) <= 0x11FF or 0x3130 <= ord(ch) <= 0x318F or 0xAC00 <= ord(ch) <= 0xD7AF:
+        return "cjk"
+    if cat.startswith("S") or cat.startswith("P"):
+        return "symbol"
+    if "SMALL CAPITAL" in unicodedata.name(ch, ""):
+        return "cjk"
+    return "text"
+
+def draw_text_mixed(draw, pos, text, fill):
     x, y = pos
     for ch in text:
-        f = font_symbols if is_symbol(ch) else font_text
+        kind = is_symbol(ch)
+        if kind == "text":
+            # استخدم حجم الخط حسب الموقع تقريبًا
+            f = font_text_large if y == 20 else (font_text_medium if y == 250 else font_text_level)
+        elif kind == "symbol":
+            f = font_symbol_large if y == 20 else (font_symbol_medium if y == 250 else font_symbol_level)
+        else:  # cjk
+            f = font_cjk
         draw.text((x, y), ch, font=f, fill=fill)
         bbox = f.getbbox(ch)
         w = bbox[2] - bbox[0]
@@ -87,23 +107,15 @@ def banner_image():
 
     draw = ImageDraw.Draw(final_img)
 
-    # شريط رمادي في الأسفل
     draw.rectangle(
         [(avatar_width, bar_y), (WIDTH, HEIGHT)],
         fill=(100, 100, 100, 230)
     )
 
-    # DEV:BNGX
-    draw_text_mixed(draw, (avatar_width + 50, bar_y - 10), "DEV:BNGX", font_large, font_symbol_large, fill="white")
-
-    # اسم اللاعب
-    draw_text_mixed(draw, (550, 20), nickname, font_nickname, font_symbol_nickname, fill="white")
-
-    # اسم الكلان
-    draw_text_mixed(draw, (550, 250), guild, font_large, font_symbol_large, fill="white")
-
-    # الليفل
-    draw_text_mixed(draw, (WIDTH - 320, HEIGHT - 230), f"Lvl. {level}", font_level, font_symbol_level, fill="white")
+    draw_text_mixed(draw, (avatar_width + 50, bar_y - 10), "DEV:BNGX", fill="white")
+    draw_text_mixed(draw, (550, 20), nickname, fill="white")
+    draw_text_mixed(draw, (550, 250), guild, fill="white")
+    draw_text_mixed(draw, (WIDTH - 320, HEIGHT - 230), f"Lvl. {level}", fill="white")
 
     buf = BytesIO()
     final_img.save(buf, format="PNG")
