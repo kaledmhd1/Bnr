@@ -8,7 +8,7 @@ app = Flask(__name__)
 # أبعاد الصورة الرئيسية
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
-AVATAR_SIZE = (412, 412)  # ارتفاع الصورة - الشريط العلوي
+AVATAR_SIZE = (512, 412)  # جعلها بنفس عرض صورة bngx لتصل لطرفها
 
 # مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
@@ -79,27 +79,24 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX بحجم 60 وبمنتصف الشريط الأسود
+    # كتابة DV:BNGX على طول ما بعد صورة bngx حتى نهاية الشريط
     dev_text = "DV:BNGX"
-    dev_area_width = WIDTH - 512 - 20  # المساحة بعد bngx مع بعض الهوامش
     font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
 
-    bbox_dev = font_dev.getbbox(dev_text)
-    w_dev = bbox_dev[2] - bbox_dev[0]
-    h_dev = bbox_dev[3] - bbox_dev[1]
+    # قياس النص وتحديد موقعه ليمتد بعد bngx إلى الطرف
+    text_area_width = WIDTH - 512
+    text_start_x = 512 + 20  # بداية بعد صورة bngx بهامش بسيط
+    text_y = (BAR_HEIGHT - font_dev.getbbox(dev_text)[3]) // 2
 
-    dev_x = 512 + ((dev_area_width - w_dev) // 2)
-    dev_y = (BAR_HEIGHT - h_dev) // 2  # وسط عموديًا داخل الشريط
+    draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
 
-    draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
-
-    # تحميل صورة الأفاتار بالحجم الصحيح
+    # تحميل صورة الأفاتار بعرض 512 (لتصل لطرف bngx)
     avatar_img = fetch_image(get_icon_url(avatar_id), AVATAR_SIZE)
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
     # كتابة الاسم والكلان
-    text_x = 430  # بعد الأفاتار
+    text_x = 530  # بعد الأفاتار
     draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
     draw.text((text_x, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
 
