@@ -1,5 +1,5 @@
 from flask import Flask, request, send_file
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
 
@@ -19,15 +19,14 @@ font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
 font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
 
-# دالة جلب صورة من رابط مع تصحيح الدوران وحفظ النسبة
-def fetch_image(url, target_size=None):
+# دالة جلب صورة من رابط
+def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
         res.raise_for_status()
         img = Image.open(BytesIO(res.content)).convert("RGBA")
-        img = ImageOps.exif_transpose(img)  # تصحيح التدوير بناءً على EXIF
-        if target_size:
-            img.thumbnail(target_size, Image.LANCZOS)  # يحافظ على نسبة الأبعاد
+        if size:
+            img = img.resize(size, Image.LANCZOS)
         return img
     except Exception as e:
         print(f"Error fetching image: {e}")
@@ -73,7 +72,7 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل خلفية البنر مع تصحيح التدوير والحفاظ على النسبة
+    # تحميل خلفية البنر
     banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
     if not banner_img:
         banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
@@ -105,7 +104,7 @@ def generate_banner():
 
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار مع تصحيح التدوير والحفاظ على النسبة
+    # تحميل صورة الأفاتار
     avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
@@ -130,5 +129,5 @@ def generate_banner():
     output.seek(0)
     return send_file(output, mimetype='image/png')
 
-if __name__ == '__main__':
+if name == '__main__':
     app.run()
