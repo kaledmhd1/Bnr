@@ -41,7 +41,7 @@ def generate_banner():
         return "UID مطلوب", 400
 
     try:
-        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region=me"
+        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api_url, timeout=5).json()
 
         basic = res.get("basicInfo", {})
@@ -56,7 +56,7 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل صورة البنر كخلفية
+    # تحميل صورة الخلفية
     banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
     if not banner_img:
         banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
@@ -64,33 +64,33 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # استخدام صورة الشريط المحلية bngx.jpg بحجم الشريط (2048x100)
+    # لصق صورة bngx فوق الأفاتار فقط (عرض 512 وطول 100)
     try:
-        bar_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((WIDTH, BAR_HEIGHT), Image.LANCZOS)
+        bar_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bar_img, (0, 0), bar_img)
     except Exception as e:
         print(f"Error loading bar image: {e}")
-        draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
+        draw.rectangle([(0, 0), (512, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
-    # تحميل صورة الأفاتار ولصقها تحت الشريط (يسار الصورة)
-    avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
-    if avatar_img:
-        img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
-
-    # الكتابة على الصورة (النص يبدأ تحت الشريط الأسود، على يمين الأفاتار)
-    text_x = 550
-    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 200), f"Lv. {level}", font=font_level, fill="white")
-    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
-
-    # كلمة DV:BNGX على يمين الشريط الأسود في الأعلى
+    # كتابة DV:BNGX على يمين صورة bar
     dev_text = "DV:BNGX"
     bbox = font_dev.getbbox(dev_text)
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
-    dev_x = WIDTH - w - 20  # 20 بكسل مسافة من الطرف الأيمن
+    dev_x = 512 + 20  # تبدأ بعد نهاية صورة bar
     dev_y = (BAR_HEIGHT - h) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
+
+    # تحميل صورة الأفاتار ولصقها تحت الشريط
+    avatar_img = fetch_image(get_icon_url(avatar_id), (512, 512))
+    if avatar_img:
+        img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
+
+    # الكتابة على يمين الأفاتار
+    text_x = 550
+    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 200), f"Lv. {level}", font=font_level, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
 
     output = BytesIO()
     img.save(output, format='PNG')
