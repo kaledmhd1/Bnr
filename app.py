@@ -2,116 +2,112 @@ from flask import Flask, request, send_file, jsonify
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
+import unicodedata
 
 app = Flask(__name__)
 
 WIDTH, HEIGHT = 2048, 512
-FONT_PATH = "ARIAL.TTF"
 
-font_nickname = ImageFont.truetype(FONT_PATH, 150)
-font_large = ImageFont.truetype(FONT_PATH, 90)
-font_level = ImageFont.truetype(FONT_PATH, 100)
+# المسارات للخطوط
+FONT_TEXT = "ARIAL.TTF"
+FONT_SYMBOLS = "DejaVuSans.ttf"  # أو "Segoe UI Symbol.ttf"
 
-def fetch_image(url):
-    try:
-        res = requests.get(url)
-        res.raise_for_status()
-        return Image.open(BytesIO(res.content)).convert("RGBA")
-    except:
-        return None
+font_text_large = ImageFont.truetype(FONT_TEXT, 130)
+font_text_medium = ImageFont.truetype(FONT_TEXT, 90)
+font_text_level = ImageFont.truetype(FONT_TEXT, 100)
+font_symbols = ImageFont.truetype(FONT_SYMBOLS, 100)
 
-def get_url(icon_id):
-    return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
+def fetch_image(url, size=None):
+    res = requests.get(url)
+    res.raise_for_status()
+    img = Image.open(BytesIO(res.content)).convert("RGBA")
+    if size:
+        img = img.resize(size, Image.LANCZOS)
+    return img
 
-def resize_and_crop(img, target_size):
-    img_ratio = img.width / img.height
-    target_ratio = target_size[0] / target_size[1]
+def is_symbol(ch):
+    # يستفيد من تصنيفات Unicode للكشف عن الرموز
+    cat = unicodedata.category(ch)
+    return cat.startswith("S") or cat.startswith("P") or unicodedata.name(ch, "").startswith("SUPERSCRIPT")
 
-    # نغير الحجم ليغطي كامل الخلفية بدون تشويه
-    if img_ratio > target_ratio:
-        new_height = target_size[1]
-        new_width = int(new_height * img_ratio)
-    else:
-        new_width = target_size[0]
-        new_height = int(new_width / img_ratio)
-
-    img = img.resize((new_width, new_height), Image.LANCZOS)
-
-    # ثم نقصها لتناسب الحجم المطلوب تمامًا
-    left = (img.width - target_size[0]) // 2
-    top = (img.height - target_size[1]) // 2
-    right = left + target_size[0]
-    bottom = top + target_size[1]
-
-    return img.crop((left, top, right, bottom))
+def draw_text_mixed(draw, pos, text, font_text, font_symbols, fill):
+    x, y = pos
+    for ch in text:
+        if is_symbol(ch):
+            f = font_symbols
+        else:
+            f = font_text
+        draw.text((x, y), ch, font=f, fill=fill)
+        w, h = draw.textsize(ch, font=f)
+        x += w
+    return x, y
 
 @app.route("/bnr")
 def banner_image():
     uid = request.args.get("uid")
     if not uid:
-        return jsonify({"error": "Thiếu uid"}), 400
-
-    region = "me"
-
+        return jsonify({"error": "Missing uid"}), 400
+    region = request.args.get("region", "me")
     try:
         api = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api).json()
     except:
-        return jsonify({"error": "Không thể lấy dữ liệu từ API"}), 500
+        return jsonify({"error": "API fetch failed"}), 500
 
-    basic = res.get("basicInfo", {})
-    clan = res.get("clanBasicInfo", {})
+    b = res.get("basicInfo", {})
+    c = res.get("clanBasicInfo", {})
+    nickname = b.get("nickname", "NoName")
+    level = str(b.get("level", 1))
+    avatar_id = b.get("headPic", 900000013)
+    banner_id = b.get("bannerId", 900000014)
+    pin_id = b.get("pinId")
+    guild = c.get("clanName", "No Guild")
 
-    nickname = basic.get("nickname", "NoName")
-    level = basic.get("level", 1)
-    avatar_id = basic.get("headPic", 900000013)
-    banner_id = basic.get("bannerId", 900000014)
-    pin_id = basic.get("pinId")
-    guild = clan.get("clanName", "No Guild")
-
-    bg_raw = fetch_image(get_url(banner_id))
-    avatar = fetch_image(get_url(avatar_id)).resize((512, 512), Image.LANCZOS)
-    pin = fetch_image(get_url(pin_id)).resize((128, 128), Image.LANCZOS) if pin_id else None
+    bg_raw = fetch_image(f"https://freefireinfo.vercel.app/icon?id={banner_id}")
+    avatar = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", (512, 512))
+    pin = fetch_image(f"https://freefireinfo.vercel.app/icon?id={pin_id}", (128, 128)) if pin_id else None
 
     if not bg_raw or not avatar:
-        return jsonify({"error": "Không tải được ảnh"}), 500
+        return jsonify({"error": "Image fetch failed"}), 500
 
-    # ملء الخلفية مع الاقتصاص لتكون 2048x512 دون تشويه
+    # تكبير الخلفية وتعبئتها
+    def resize_and_crop(img, target):
+        tw, th = target
+        ir = img.width / img.height
+        tr = tw / th
+        if ir > tr:
+            new_h = th
+            new_w = int(ir * th)
+        else:
+            new_w = tw
+            new_h = int(new_w / ir)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+        left = (new_w - tw)//2
+        top = (new_h - th)//2
+        return img.crop((left, top, left+tw, top+th))
+
     bg = resize_and_crop(bg_raw, (WIDTH, HEIGHT))
 
-    final_img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    final_img.paste(bg, (0, 0))
-
-    final_img.paste(avatar, (0, 0), avatar)
+    final = Image.new("RGBA", (WIDTH, HEIGHT))
+    final.paste(bg, (0,0))
+    final.paste(avatar, (0,0), avatar)
     if pin:
-        final_img.paste(pin, (30, 384), pin)
+        final.paste(pin, (30, HEIGHT-230), pin)
 
-    draw = ImageDraw.Draw(final_img)
+    draw = ImageDraw.Draw(final)
+    bar_h = 100
+    y_bar = HEIGHT - bar_h
+    draw.rectangle([(512, y_bar), (WIDTH, HEIGHT)], fill=(100,100,100,230))
 
-    bar_height = 100
-    bar_y = HEIGHT - bar_height
-    avatar_width = 512
-
-    draw.rectangle(
-        [(avatar_width, bar_y), (WIDTH, HEIGHT)],
-        fill=(100, 100, 100, 230)
-    )
-
-    dev_text = "DEV:BNGX"
-    text_bbox = font_large.getbbox(dev_text)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_x = avatar_width + (WIDTH - avatar_width - text_width) // 15
-    text_y = bar_y - 27
-    draw.text((text_x, text_y), dev_text, font=font_large, fill="white")
-
-    draw.text((550, 20), nickname, font=font_nickname, fill="white")
-    draw.text((550, 250), guild, font=font_large, fill="white")
-    draw.text((WIDTH - 320, HEIGHT - 230), f"Lvl. {level}", font=font_level, fill="white")
+    # اكتشاف النص بالخطوط المختلطة
+    draw_text_mixed(draw, (550, 20), nickname, font_text_large, font_symbols, fill="black")
+    draw_text_mixed(draw, (550, 250), guild, font_text_medium, font_symbols, fill="black")
+    draw_text_mixed(draw, (WIDTH-320, HEIGHT-230), f"Lvl. {level}", font_text_level, font_symbols, fill="black")
 
     buf = BytesIO()
-    final_img.save(buf, format="PNG")
+    final.save(buf, format="PNG")
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
