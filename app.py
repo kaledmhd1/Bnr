@@ -8,7 +8,7 @@ app = Flask(__name__)
 # أبعاد الصورة الرئيسية
 WIDTH, HEIGHT = 2048, 512
 BAR_HEIGHT = 100
-AVATAR_SIZE = (512, 412)  # جعلها بنفس عرض صورة bngx لتصل لطرفها
+AVATAR_SIZE = (512, 412)
 
 # مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
@@ -20,7 +20,6 @@ font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
 font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
 
-# دالة جلب صورة من رابط
 def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
@@ -33,7 +32,6 @@ def fetch_image(url, size=None):
         print(f"Error fetching image: {e}")
         return None
 
-# توليد رابط الأيقونات
 def get_icon_url(icon_id):
     return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
 
@@ -61,46 +59,44 @@ def generate_banner():
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
-    # تحميل خلفية البنر
-    banner_img = fetch_image(get_icon_url(banner_id), (WIDTH, HEIGHT))
-    if not banner_img:
-        banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
+    # إنشاء صورة فارغة للخلفية
+    banner_img_full = fetch_image(get_icon_url(banner_id))
+    banner_img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
+    if banner_img_full:
+        banner_part = banner_img_full.resize((WIDTH - 512, HEIGHT), Image.LANCZOS)
+        banner_img.paste(banner_part, (512, 0))
 
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # رسم الشريط الأسود العلوي
+    # الشريط الأسود العلوي
     draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
-    # لصق صورة bngx في الشريط
+    # bngx في الشريط
     try:
         bngx_img = Image.open("bngx.jpg.jpeg").convert("RGBA").resize((512, BAR_HEIGHT), Image.LANCZOS)
         img.paste(bngx_img, (0, 0), bngx_img)
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX على طول ما بعد صورة bngx حتى نهاية الشريط
+    # كتابة DV:BNGX بعد صورة bngx
     dev_text = "DV:BNGX"
     font_dev = ImageFont.truetype(FONT_MIXED_PATH, 80)
-
-    # قياس النص وتحديد موقعه ليمتد بعد bngx إلى الطرف
-    text_area_width = WIDTH - 512
-    text_start_x = 512 + 20  # بداية بعد صورة bngx بهامش بسيط
+    text_start_x = 512 + 20
     text_y = (BAR_HEIGHT - font_dev.getbbox(dev_text)[3]) // 2
-
     draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
 
-    # تحميل صورة الأفاتار بعرض 512 (لتصل لطرف bngx)
+    # الأفاتار
     avatar_img = fetch_image(get_icon_url(avatar_id), AVATAR_SIZE)
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
-    # كتابة الاسم والكلان
-    text_x = 530  # بعد الأفاتار
+    # الاسم والكلان
+    text_x = 530
     draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
     draw.text((text_x, BAR_HEIGHT + 230), clan_name, font=font_clan, fill="white")
 
-    # كتابة المستوى أسفل يمين الصورة
+    # المستوى
     level_text = f"Lv. {level}"
     bbox_level = font_level.getbbox(level_text)
     w_level = bbox_level[2] - bbox_level[0]
@@ -115,6 +111,5 @@ def generate_banner():
     output.seek(0)
     return send_file(output, mimetype='image/png')
 
-# تشغيل الخادم
 if __name__ == '__main__':
     app.run()
