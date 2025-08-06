@@ -18,9 +18,8 @@ FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 font_nickname = ImageFont.truetype(FONT_MIXED_PATH, 130)
 font_level = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_clan = ImageFont.truetype(FONT_TEXT_PATH, 100)
-font_dev = ImageFont.truetype(FONT_MIXED_PATH, 60)
 
-# دالة لجلب صورة من رابط
+# دالة جلب صورة من رابط
 def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
@@ -33,11 +32,22 @@ def fetch_image(url, size=None):
         print(f"Error fetching image: {e}")
         return None
 
-# دالة لتوليد رابط الصورة من ID
+# توليد رابط الأيقونات
 def get_icon_url(icon_id):
     return f"https://freefireinfo.vercel.app/icon?id={icon_id}"
 
-# مسار الـ API الأساسي
+# دالة لتكبير الخط لملء مساحة معينة
+def get_fitted_font(text, font_path, max_width, max_height, start_size=10):
+    font_size = start_size
+    while True:
+        font = ImageFont.truetype(font_path, font_size)
+        bbox = font.getbbox(text)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        if w >= max_width or h >= max_height:
+            break
+        font_size += 1
+    return ImageFont.truetype(font_path, font_size - 1)
+
 @app.route('/bnr')
 def generate_banner():
     uid = request.args.get("uid")
@@ -47,7 +57,6 @@ def generate_banner():
         return "UID مطلوب", 400
 
     try:
-        # جلب البيانات من API
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api_url, timeout=5).json()
 
@@ -81,12 +90,16 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX على يمين صورة bngx
+    # كتابة DV:BNGX على كامل المساحة المتبقية من الشريط
     dev_text = "DV:BNGX"
+    dev_area_width = WIDTH - 512 - 40  # المساحة بعد bngx مع بعض الهوامش
+    dev_area_height = BAR_HEIGHT
+    font_dev = get_fitted_font(dev_text, FONT_MIXED_PATH, dev_area_width, dev_area_height)
+
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
-    dev_x = 512 + 20
+    dev_x = 512 + ((dev_area_width - w_dev) // 2)
     dev_y = (BAR_HEIGHT - h_dev) // 2
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
@@ -95,20 +108,19 @@ def generate_banner():
     if avatar_img:
         img.paste(avatar_img, (0, BAR_HEIGHT), avatar_img)
 
-    # الكتابة على يمين الأفاتار
+    # كتابة الاسم والكلان
     text_x = 550
-    nickname_y = BAR_HEIGHT + 20
-    clan_y = BAR_HEIGHT + 300
+    draw.text((text_x, BAR_HEIGHT + 20), nickname, font=font_nickname, fill="white")
+    draw.text((text_x, BAR_HEIGHT + 300), clan_name, font=font_clan, fill="white")
 
-    draw.text((text_x, nickname_y), nickname, font=font_nickname, fill="white")
-
-    # حساب حجم نص المستوى
+    # كتابة المستوى أسفل يمين الصورة
     level_text = f"Lv. {level}"
     bbox_level = font_level.getbbox(level_text)
     w_level = bbox_level[2] - bbox_level[0]
-    draw.text((WIDTH - w_level - 50, nickname_y), level_text, font=font_level, fill="white")
-
-    draw.text((text_x, clan_y), clan_name, font=font_clan, fill="white")
+    h_level = bbox_level[3] - bbox_level[1]
+    level_x = WIDTH - w_level - 50
+    level_y = HEIGHT - h_level - 20
+    draw.text((level_x, level_y), level_text, font=font_level, fill="white")
 
     # إخراج الصورة
     output = BytesIO()
