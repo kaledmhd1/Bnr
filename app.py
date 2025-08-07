@@ -5,18 +5,18 @@ import requests
 
 app = Flask(__name__)
 
-WIDTH, HEIGHT = 2048, 512
-BAR_HEIGHT = 100
-AVATAR_SIZE = (512, 412)
+# تم تقليل الارتفاع بـ 19 بكسل ≈ 5 ملم
+WIDTH, HEIGHT = 2048, 493
+BAR_HEIGHT = 81
+AVATAR_SIZE = (512, HEIGHT - BAR_HEIGHT)
 
 # مسارات الخطوط
 FONT_TEXT_PATH = "ARIAL.TTF"
 FONT_SYMBOL_PATH = "DejaVuSans.ttf"
 FONT_MIXED_PATH = "NotoSans-Regular.ttf"
 FONT_ARABIC_PATH = "NotoSansArabic-Regular.ttf"
-FONT_CJK_PATH = "NotoSansCJKjp-Regular.otf"  # خط لدعم CJK (صيني، ياباني، كوري)
+FONT_CJK_PATH = "NotoSansCJKjp-Regular.otf"
 
-# تحميل الخطوط
 font_arial = ImageFont.truetype(FONT_TEXT_PATH, 100)
 font_dejavu = ImageFont.truetype(FONT_SYMBOL_PATH, 90)
 font_noto = ImageFont.truetype(FONT_MIXED_PATH, 130)
@@ -30,13 +30,12 @@ def contains_arabic(text):
     return any('\u0600' <= c <= '\u06FF' for c in text)
 
 def contains_cjk(text):
-    # النطاقات الرئيسية للـ CJK Unified Ideographs
     return any(
-        (0x4E00 <= ord(c) <= 0x9FFF) or    # CJK Unified Ideographs
-        (0x3400 <= ord(c) <= 0x4DBF) or    # CJK Unified Ideographs Extension A
-        (0x3040 <= ord(c) <= 0x309F) or    # Hiragana (ياباني)
-        (0x30A0 <= ord(c) <= 0x30FF) or    # Katakana (ياباني)
-        (0xAC00 <= ord(c) <= 0xD7AF)       # Hangul Syllables (كوري)
+        (0x4E00 <= ord(c) <= 0x9FFF) or
+        (0x3400 <= ord(c) <= 0x4DBF) or
+        (0x3040 <= ord(c) <= 0x309F) or
+        (0x30A0 <= ord(c) <= 0x30FF) or
+        (0xAC00 <= ord(c) <= 0xD7AF)
         for c in text
     )
 
@@ -47,7 +46,6 @@ def select_font_for_text(text, size):
     elif contains_cjk(text):
         return ImageFont.truetype(FONT_CJK_PATH, size)
     else:
-        # فقط نص لاتيني أو رموز أخرى، نستخدم NotoSans أو Arial حسب الحجم
         if size > 100:
             return ImageFont.truetype(FONT_MIXED_PATH, size)
         else:
@@ -76,7 +74,6 @@ def generate_banner():
     try:
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api_url, timeout=5).json()
-
         basic = res.get("basicInfo", {})
         clan = res.get("clanBasicInfo", {})
 
@@ -101,7 +98,7 @@ def generate_banner():
     img = banner_img.copy()
     draw = ImageDraw.Draw(img)
 
-    # الشريط الأسود العلوي
+    # شريط أسود علوي
     draw.rectangle([(0, 0), (WIDTH, BAR_HEIGHT)], fill=(0, 0, 0, 255))
 
     try:
@@ -110,15 +107,13 @@ def generate_banner():
     except Exception as e:
         print(f"Error loading bngx image: {e}")
 
-    # كتابة DV:BNGX
+    # DV:BNGX
     dev_text = to_halfwidth("DV:BNGX")
     font_dev = select_font_for_text(dev_text, 80)
     bbox_dev = font_dev.getbbox(dev_text)
     w_dev = bbox_dev[2] - bbox_dev[0]
     h_dev = bbox_dev[3] - bbox_dev[1]
-    text_start_x = 512 + 20
-    text_y = (BAR_HEIGHT - h_dev) // 2
-    draw.text((text_start_x, text_y), dev_text, font=font_dev, fill="white")
+    draw.text((512 + 20, (BAR_HEIGHT - h_dev) // 2), dev_text, font=font_dev, fill="white")
 
     # الأفاتار
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
