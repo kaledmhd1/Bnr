@@ -5,17 +5,17 @@ import requests
 
 app = Flask(__name__)
 
-# إعدادات الصورة
+# أبعاد الصورة
 WIDTH, HEIGHT = 2048, 512
 AVATAR_SIZE = (512, 412)
-AVATAR_POSITION = (0, 100)  # موضع الأفاتار حسب الصورة المرجعية
+AVATAR_POSITION = (0, 100)  # الموضع فوق الخلفية
 
-# ✏️ ضع هنا رابط الصورة التي حصلت عليها (رابط مباشر من imgur)
-BACKGROUND_IMAGE_URL = "https://i.imgur.com/o5KH4I9.png"  # ← غيّرها برابطك لو مختلف
+# رابط الخلفية (من imgur بصيغة مباشرة)
+BACKGROUND_IMAGE_URL = "https://i.imgur.com/o5KH4I9.png"
 
 def fetch_image(url, size=None):
     try:
-        print(f"جلب الصورة من: {url}")
+        print(f"📥 جلب الصورة من: {url}")
         res = requests.get(url, timeout=5)
         res.raise_for_status()
         img = Image.open(BytesIO(res.content)).convert("RGBA")
@@ -23,7 +23,7 @@ def fetch_image(url, size=None):
             img = img.resize(size, Image.LANCZOS)
         return img
     except Exception as e:
-        print(f"خطأ في جلب الصورة: {e}")
+        print(f"❌ خطأ في جلب الصورة: {e}")
         return None
 
 @app.route('/bnr')
@@ -35,7 +35,7 @@ def generate_avatar_on_custom_background():
         return "يرجى تحديد UID", 400
 
     try:
-        # جلب بيانات اللاعب
+        # جلب بيانات اللاعب من API
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         res = requests.get(api_url, timeout=5).json()
         avatar_id = res.get("basicInfo", {}).get("headPic", 900000013)
@@ -47,11 +47,14 @@ def generate_avatar_on_custom_background():
     if not background:
         return "❌ فشل في تحميل الخلفية", 500
 
-    # جلب صورة الأفاتار
+    # جلب الأفاتار
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
     if avatar_img:
         background.paste(avatar_img, AVATAR_POSITION, avatar_img)
+    else:
+        print("⚠️ لم يتم جلب صورة الأفاتار.")
 
+    # إخراج الصورة النهائية
     output = BytesIO()
     background.save(output, format='PNG')
     output.seek(0)
