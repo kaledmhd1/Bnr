@@ -6,6 +6,7 @@ import requests
 app = Flask(__name__)
 
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
+TARGET_WIDTH, TARGET_HEIGHT = 2048, 512  # حجم الخلفية بعد التكبير
 
 def fetch_image(url):
     try:
@@ -14,6 +15,7 @@ def fetch_image(url):
         res.raise_for_status()
         img = Image.open(BytesIO(res.content)).convert("RGBA")
         if img.format == 'WEBP':
+            # تحويل WEBP إلى PNG داخلياً
             png_bytes = BytesIO()
             img.save(png_bytes, format='PNG')
             png_bytes.seek(0)
@@ -42,12 +44,11 @@ def generate_banner():
     if not background:
         return "فشل في تحميل الخلفية", 500
 
-    # اعرض حجم الخلفية الأصلي (لتعرفه من السجلات)
-    bg_width, bg_height = background.size
-    print(f"حجم الخلفية الأصلي: العرض={bg_width}، الارتفاع={bg_height}")
+    # تكبير الخلفية إلى الحجم المطلوب
+    background = background.resize((TARGET_WIDTH, TARGET_HEIGHT), Image.LANCZOS)
 
-    # حدد إحداثيات المربع الأحمر بدقة هنا (قيمة مثال، يجب تعديلها حسب الصورة الحقيقية)
-    AVATAR_BOX = (50, 100, 50 + 420, 100 + 420)  # (left, top, right, bottom)
+    # تحديد موقع المربع الأحمر في الخلفية الكبيرة (يمكنك تعديل القيم حسب الحاجة)
+    AVATAR_BOX = (0, 100, 512, 512)  # (left, top, right, bottom)
 
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
     if avatar_img:
