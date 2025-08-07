@@ -5,17 +5,14 @@ import requests
 
 app = Flask(__name__)
 
+# رابط الخلفية الأصلية
 BACKGROUND_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
 
-# تكبير الخلفية بنسبة 2x
-SCALE_FACTOR = 2
+# حجم الأفاتار صغير جدًا
+AVATAR_SIZE = (80, 80)  # حجم صغير جدًا
 
-# حجم الأفاتار
-AVATAR_SIZE = (300, 300)  # تكبير الأفاتار أيضاً
-
-# إحداثيات مكان الأفاتار (نضرب الإحداثيات الأصلية × SCALE_FACTOR)
-ORIGINAL_POSITION = (774, 35)
-AVATAR_POSITION = (ORIGINAL_POSITION[0] * SCALE_FACTOR, ORIGINAL_POSITION[1] * SCALE_FACTOR)
+# موضع الأفاتار (مكان كلمة sayonara في المربع الأحمر)
+AVATAR_POSITION = (774, 35)
 
 def fetch_image(url):
     try:
@@ -34,7 +31,7 @@ def generate_banner():
     if not uid:
         return "يرجى إدخال uid", 400
 
-    # جلب معلومات اللاعب
+    # جلب معلومات اللاعب للحصول على avatar_id
     try:
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
         data = requests.get(api_url, timeout=5).json()
@@ -42,22 +39,18 @@ def generate_banner():
     except Exception as e:
         return f"فشل في جلب معلومات اللاعب: {e}", 500
 
-    # تحميل صورة الخلفية
+    # تحميل الخلفية الأصلية
     bg = fetch_image(BACKGROUND_URL)
     if bg is None:
         return "فشل في تحميل الخلفية", 500
 
-    # تكبير الخلفية بنسبة 2×
-    new_size = (bg.width * SCALE_FACTOR, bg.height * SCALE_FACTOR)
-    bg = bg.resize(new_size, Image.LANCZOS)
-
-    # تحميل صورة الأفاتار
+    # تحميل الأفاتار وتصغيره جدًا
     avatar = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
     if avatar:
         avatar = avatar.resize(AVATAR_SIZE, Image.LANCZOS)
         bg.paste(avatar, AVATAR_POSITION, avatar)
 
-    # إخراج الصورة النهائية
+    # تجهيز الصورة للإرسال
     output = BytesIO()
     bg.save(output, format="PNG")
     output.seek(0)
