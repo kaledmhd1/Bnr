@@ -7,9 +7,15 @@ app = Flask(__name__)
 
 BACKGROUND_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
 
-# إحداثيات المربع الأحمر في الصورة الأصلية (التي فيها "sayonara")
-AVATAR_POSITION = (774, 35)  # (x, y) — وسط المربع الأحمر
-AVATAR_SIZE = (180, 180)     # حجم الأفاتار ليغطي المربع الأحمر
+# تكبير الخلفية بنسبة 2x
+SCALE_FACTOR = 2
+
+# حجم الأفاتار
+AVATAR_SIZE = (300, 300)  # تكبير الأفاتار أيضاً
+
+# إحداثيات مكان الأفاتار (نضرب الإحداثيات الأصلية × SCALE_FACTOR)
+ORIGINAL_POSITION = (774, 35)
+AVATAR_POSITION = (ORIGINAL_POSITION[0] * SCALE_FACTOR, ORIGINAL_POSITION[1] * SCALE_FACTOR)
 
 def fetch_image(url):
     try:
@@ -36,10 +42,14 @@ def generate_banner():
     except Exception as e:
         return f"فشل في جلب معلومات اللاعب: {e}", 500
 
-    # تحميل صورة الخلفية الأصلية كما هي
+    # تحميل صورة الخلفية
     bg = fetch_image(BACKGROUND_URL)
     if bg is None:
         return "فشل في تحميل الخلفية", 500
+
+    # تكبير الخلفية بنسبة 2×
+    new_size = (bg.width * SCALE_FACTOR, bg.height * SCALE_FACTOR)
+    bg = bg.resize(new_size, Image.LANCZOS)
 
     # تحميل صورة الأفاتار
     avatar = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
