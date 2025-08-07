@@ -12,8 +12,9 @@ FONT_FALLBACKS = [
     "NotoSans-Regular.ttf",
     "ARIAL.TTF",
     "NotoSansArabic-Regular.ttf",
-    "NotoSansSymbols2-Regular.ttf"
-    "NotoSansCJKjp-Regular.otf"
+    "NotoSansSymbols2-Regular.ttf",
+    "NotoSansCJKjp-Regular.otf",
+    "unifont-15.0.01.ttf"
 ]
 SECRET_KEY = "BNGX"
 
