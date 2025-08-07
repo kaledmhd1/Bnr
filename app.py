@@ -5,62 +5,53 @@ import requests
 
 app = Flask(__name__)
 
-BACKGROUND_IMAGE_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
-TARGET_WIDTH, TARGET_HEIGHT = 2048, 512  # حجم الخلفية بعد التكبير
+BACKGROUND_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
+
+# إحداثيات المربع الأحمر في الصورة الأصلية (التي فيها "sayonara")
+AVATAR_POSITION = (774, 35)  # (x, y) — وسط المربع الأحمر
+AVATAR_SIZE = (180, 180)     # حجم الأفاتار ليغطي المربع الأحمر
 
 def fetch_image(url):
     try:
-        print(f"جلب الصورة من: {url}")
-        res = requests.get(url, timeout=10)
-        res.raise_for_status()
-        img = Image.open(BytesIO(res.content)).convert("RGBA")
-        if img.format == 'WEBP':
-            # تحويل WEBP إلى PNG داخلياً
-            png_bytes = BytesIO()
-            img.save(png_bytes, format='PNG')
-            png_bytes.seek(0)
-            img = Image.open(png_bytes).convert("RGBA")
-        return img
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return Image.open(BytesIO(response.content)).convert("RGBA")
     except Exception as e:
-        print(f"خطأ في جلب الصورة: {e}")
+        print(f"فشل في جلب الصورة: {e}")
         return None
 
-@app.route('/bnr')
+@app.route("/bnr")
 def generate_banner():
     uid = request.args.get("uid")
     region = request.args.get("region", "me")
 
     if not uid:
-        return "يرجى تحديد UID", 400
+        return "يرجى إدخال uid", 400
 
+    # جلب معلومات اللاعب
     try:
         api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region={region}"
-        res = requests.get(api_url, timeout=5).json()
-        avatar_id = res.get("basicInfo", {}).get("headPic", 900000013)
+        data = requests.get(api_url, timeout=5).json()
+        avatar_id = data.get("basicInfo", {}).get("headPic", 900000013)
     except Exception as e:
-        return f"فشل في جلب بيانات اللاعب: {e}", 500
+        return f"فشل في جلب معلومات اللاعب: {e}", 500
 
-    background = fetch_image(BACKGROUND_IMAGE_URL)
-    if not background:
+    # تحميل صورة الخلفية الأصلية كما هي
+    bg = fetch_image(BACKGROUND_URL)
+    if bg is None:
         return "فشل في تحميل الخلفية", 500
 
-    # تكبير الخلفية إلى الحجم المطلوب
-    background = background.resize((TARGET_WIDTH, TARGET_HEIGHT), Image.LANCZOS)
+    # تحميل صورة الأفاتار
+    avatar = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
+    if avatar:
+        avatar = avatar.resize(AVATAR_SIZE, Image.LANCZOS)
+        bg.paste(avatar, AVATAR_POSITION, avatar)
 
-    # تحديد موقع المربع الأحمر في الخلفية الكبيرة (يمكنك تعديل القيم حسب الحاجة)
-    AVATAR_BOX = (0, 100, 512, 512)  # (left, top, right, bottom)
-
-    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
-    if avatar_img:
-        avatar_width = AVATAR_BOX[2] - AVATAR_BOX[0]
-        avatar_height = AVATAR_BOX[3] - AVATAR_BOX[1]
-        avatar_img = avatar_img.resize((avatar_width, avatar_height), Image.LANCZOS)
-        background.paste(avatar_img, (AVATAR_BOX[0], AVATAR_BOX[1]), avatar_img)
-
+    # إخراج الصورة النهائية
     output = BytesIO()
-    background.save(output, format='PNG')
+    bg.save(output, format="PNG")
     output.seek(0)
-    return send_file(output, mimetype='image/png')
+    return send_file(output, mimetype="image/png")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()
