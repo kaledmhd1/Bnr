@@ -10,7 +10,7 @@ BACKGROUND_IMAGE_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
 def fetch_image(url):
     try:
         print(f"جلب الصورة من: {url}")
-        res = requests.get(url, timeout=5)
+        res = requests.get(url, timeout=10)
         res.raise_for_status()
         img = Image.open(BytesIO(res.content)).convert("RGBA")
         if img.format == 'WEBP':
@@ -42,13 +42,18 @@ def generate_banner():
     if not background:
         return "فشل في تحميل الخلفية", 500
 
+    # اعرض حجم الخلفية الأصلي (لتعرفه من السجلات)
+    bg_width, bg_height = background.size
+    print(f"حجم الخلفية الأصلي: العرض={bg_width}، الارتفاع={bg_height}")
+
+    # حدد إحداثيات المربع الأحمر بدقة هنا (قيمة مثال، يجب تعديلها حسب الصورة الحقيقية)
+    AVATAR_BOX = (50, 100, 50 + 420, 100 + 420)  # (left, top, right, bottom)
+
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
     if avatar_img:
-        AVATAR_BOX = (0, 100, 512, 512)
         avatar_width = AVATAR_BOX[2] - AVATAR_BOX[0]
         avatar_height = AVATAR_BOX[3] - AVATAR_BOX[1]
         avatar_img = avatar_img.resize((avatar_width, avatar_height), Image.LANCZOS)
-        # استبدال كامل المربع الأحمر بصورة الأفاتار الجديدة
         background.paste(avatar_img, (AVATAR_BOX[0], AVATAR_BOX[1]), avatar_img)
 
     output = BytesIO()
