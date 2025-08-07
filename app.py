@@ -85,7 +85,7 @@ def generate_avatar_only():
         nickname = res["basicInfo"]["nickname"]
         likes = res["basicInfo"]["liked"]
         level = res["basicInfo"]["level"]
-        avatar_id = res["profileInfo"]["avatarId"]
+        avatar_id = res["basicInfo"]["headPic"]
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
