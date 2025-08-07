@@ -5,13 +5,9 @@ import requests
 
 app = Flask(__name__)
 
-WIDTH, HEIGHT = 2048, 512
-AVATAR_SIZE = (512, 412)
-AVATAR_POSITION = (0, 100)
-
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
 
-def fetch_image(url, size=None):
+def fetch_image(url):
     try:
         print(f"جلب الصورة من: {url}")
         res = requests.get(url, timeout=5)
@@ -22,15 +18,13 @@ def fetch_image(url, size=None):
             img.save(png_bytes, format='PNG')
             png_bytes.seek(0)
             img = Image.open(png_bytes).convert("RGBA")
-        if size:
-            img = img.resize(size, Image.LANCZOS)
         return img
     except Exception as e:
         print(f"خطأ في جلب الصورة: {e}")
         return None
 
 @app.route('/bnr')
-def generate_avatar_on_custom_background():
+def generate_banner():
     uid = request.args.get("uid")
     region = request.args.get("region", "me")
 
@@ -44,13 +38,18 @@ def generate_avatar_on_custom_background():
     except Exception as e:
         return f"فشل في جلب بيانات اللاعب: {e}", 500
 
-    background = fetch_image(BACKGROUND_IMAGE_URL, (WIDTH, HEIGHT))
+    background = fetch_image(BACKGROUND_IMAGE_URL)
     if not background:
         return "فشل في تحميل الخلفية", 500
 
-    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
+    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}")
     if avatar_img:
-        background.paste(avatar_img, AVATAR_POSITION, avatar_img)
+        AVATAR_BOX = (0, 100, 512, 512)
+        avatar_width = AVATAR_BOX[2] - AVATAR_BOX[0]
+        avatar_height = AVATAR_BOX[3] - AVATAR_BOX[1]
+        avatar_img = avatar_img.resize((avatar_width, avatar_height), Image.LANCZOS)
+        # استبدال كامل المربع الأحمر بصورة الأفاتار الجديدة
+        background.paste(avatar_img, (AVATAR_BOX[0], AVATAR_BOX[1]), avatar_img)
 
     output = BytesIO()
     background.save(output, format='PNG')
