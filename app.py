@@ -11,26 +11,38 @@ def generate_banner():
     if not uid:
         return "Missing UID", 400
 
-    # تحميل صورة الخلفية الأصلية
+    # تحميل الخلفية من الرابط
     bg_url = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
     bg_response = requests.get(bg_url)
+    if bg_response.status_code != 200:
+        return "Failed to load background image", 500
+
     background = Image.open(BytesIO(bg_response.content)).convert("RGBA")
 
-    # تحميل صورة الأفاتار من API
+    # حجم الصورة النهائية
+    WIDTH, HEIGHT = 2048, 512
+    background = background.resize((WIDTH, HEIGHT))  # ✅ نغير حجم الخلفية لتناسب الأبعاد
+
+    # تحميل صورة الأفاتار
     avatar_url = f"https://freefireinfo.vercel.app/icon?id={uid}"
     avatar_response = requests.get(avatar_url)
-    avatar = Image.open(BytesIO(avatar_response.content)).convert("RGBA")
+    if avatar_response.status_code != 200 or 'image' not in avatar_response.headers.get('Content-Type', ''):
+        return f"Failed to load avatar for UID {uid}", 400
 
-    # تصغير الأفاتار جدًا
-    avatar = avatar.resize((80, 65))  # ← الحجم الصغير جدًا المطلوب
+    try:
+        avatar = Image.open(BytesIO(avatar_response.content)).convert("RGBA")
+    except Exception as e:
+        return f"Error loading avatar image: {e}", 500
+
+    # تصغير الأفاتار لحجم مناسب
+    avatar = avatar.resize((150, 120))  # ✅ حجم مناسب
 
     # لصق الأفاتار في أسفل يسار الصورة
-    bg_width, bg_height = background.size
     av_width, av_height = avatar.size
-    position = (10, bg_height - av_height - 10)  # هامش 10 بكسل من الأسفل واليسار
+    position = (20, HEIGHT - av_height - 20)
     background.paste(avatar, position, avatar)
 
-    # تصدير الصورة النهائية
+    # تصدير الصورة
     output = BytesIO()
     background.save(output, format="PNG")
     output.seek(0)
