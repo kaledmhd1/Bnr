@@ -125,7 +125,7 @@ def generate_avatar_only():
     smart_draw_text(draw, (text_x, text_y), text, fonts, 35, "white")
 
     # رسم اللايكات
-    likes_text = f"{likes} ❤️"
+    likes_text = f"{likes}"
     bbox_likes = fonts["primary"][40].getbbox(likes_text)
     likes_w = bbox_likes[2] - bbox_likes[0]
     likes_y = text_y - (bbox_likes[3] - bbox_likes[1]) - 25
