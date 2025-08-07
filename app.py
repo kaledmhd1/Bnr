@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 AVATAR_SIZE = (125, 125)
 FONT_PATH = "Tajawal-Bold.ttf"
-SECRET_KEY = "BNGX"  # ← مفتاح التحقق
+SECRET_KEY = "BNGX"
 
 def fetch_image(url, size=None):
     try:
@@ -26,7 +26,6 @@ def generate_avatar_only():
     uid = request.args.get("uid")
     key = request.args.get("key")
 
-    # تحقق من المفتاح
     if key != SECRET_KEY:
         return "🚫 مفتاح غير صحيح", 403
 
@@ -34,12 +33,12 @@ def generate_avatar_only():
         return "يرجى تحديد UID", 400
 
     try:
-        api_url = f"https://infoplayerbngx.vercel.app/get?uid={uid}"
+        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region=me"
         res = requests.get(api_url, timeout=5).json()
-        avatar_id = res["captainBasicInfo"]["headPic"]
-        nickname = res["captainBasicInfo"]["nickname"]
-        likes = res["captainBasicInfo"]["liked"]
-        level = res["captainBasicInfo"]["level"]
+        nickname = res["basicInfo"]["nickname"]
+        likes = res["basicInfo"]["liked"]
+        level = res["basicInfo"]["level"]
+        avatar_id = res["profileInfo"]["avatarId"]
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
@@ -67,18 +66,17 @@ def generate_avatar_only():
         font_likes = ImageFont.load_default()
         font_dev = ImageFont.load_default()
 
-    # تحميل الأفاتار
+    # تحميل الأفاتار من avatarId
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
     avatar_x = 90
     avatar_y = 82
     if avatar_img:
         img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
 
-    # ✳️ رسم اللفل تحت الأفاتار
+    # رسم اللفل تحت الأفاتار
     level_text = f"Lv. {level}"
     bbox_level = font_nickname.getbbox(level_text)
     level_w = bbox_level[2] - bbox_level[0]
-    level_h = bbox_level[3] - bbox_level[1]
     level_x = avatar_x - 40
     level_y = avatar_y + 160
     draw.text((level_x, level_y), level_text, font=font_nickname, fill="black")
@@ -103,23 +101,19 @@ def generate_avatar_only():
     likes_text = f"{likes} ❤️"
     bbox_likes = font_likes.getbbox(likes_text)
     likes_w = bbox_likes[2] - bbox_likes[0]
-    likes_h = bbox_likes[3] - bbox_likes[1]
-
     likes_x = img_w - likes_w - 60
-    likes_y = text_y - likes_h - 25
+    likes_y = text_y - bbox_likes[3] - 25
     draw.text((likes_x, likes_y), likes_text, font=font_likes, fill="black")
 
-    # ✳️ إضافة DEV BY : BNGX في الزاوية العليا اليمنى
+    # DEV BY : BNGX في الزاوية العليا اليمنى
     dev_text = "DEV BY : BNGX"
     bbox_dev = font_dev.getbbox(dev_text)
     dev_w = bbox_dev[2] - bbox_dev[0]
-    dev_h = bbox_dev[3] - bbox_dev[1]
     padding = 30
     dev_x = img_w - dev_w - padding
     dev_y = padding
     draw.text((dev_x, dev_y), dev_text, font=font_dev, fill="white")
 
-    # إرسال الصورة
     output = BytesIO()
     img.save(output, format='PNG')
     output.seek(0)
