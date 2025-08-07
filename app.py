@@ -5,39 +5,33 @@ import requests
 
 app = Flask(__name__)
 
-def fetch_image(url):
-    response = requests.get(url)
-    return Image.open(BytesIO(response.content)).convert("RGBA")
-
 @app.route("/bnr")
-def banner():
-    # خلفية من ibb
-    background_url = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
-    background = fetch_image(background_url)
+def generate_banner():
+    uid = request.args.get("uid")
+    if not uid:
+        return "Missing UID", 400
 
-    # الاحتفاظ بالحجم الأصلي للخلفية
-    WIDTH, HEIGHT = background.size
-    img = Image.new("RGBA", (WIDTH, HEIGHT))
-    img.paste(background, (0, 0))
+    # تحميل صورة الخلفية الأصلية
+    bg_url = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
+    bg_response = requests.get(bg_url)
+    background = Image.open(BytesIO(bg_response.content)).convert("RGBA")
 
-    # جلب صورة الأفاتار
-    avatar_id = "900000013"
-    avatar_url = f"https://freefireinfo.vercel.app/icon?id={avatar_id}"
-    avatar = fetch_image(avatar_url)
+    # تحميل صورة الأفاتار من API
+    avatar_url = f"https://freefireinfo.vercel.app/icon?id={uid}"
+    avatar_response = requests.get(avatar_url)
+    avatar = Image.open(BytesIO(avatar_response.content)).convert("RGBA")
 
-    # تغيير حجم الأفاتار ليكون صغيرًا ومتناسبًا مع الخلفية
-    avatar_width = 65
-    avatar_height = 65
-    avatar = avatar.resize((avatar_width, avatar_height))
+    # تصغير الأفاتار جدًا
+    avatar = avatar.resize((80, 65))  # ← الحجم الصغير جدًا المطلوب
 
-    # موضع الأفاتار (مكان المربع الأحمر)
-    avatar_x = 42  # ← عدّل هذا حسب موقع المربع الأحمر بالضبط
-    avatar_y = 43
+    # لصق الأفاتار في أسفل يسار الصورة
+    bg_width, bg_height = background.size
+    av_width, av_height = avatar.size
+    position = (10, bg_height - av_height - 10)  # هامش 10 بكسل من الأسفل واليسار
+    background.paste(avatar, position, avatar)
 
-    img.paste(avatar, (avatar_x, avatar_y), avatar)
-
-    # تصدير الصورة
+    # تصدير الصورة النهائية
     output = BytesIO()
-    img.save(output, format="PNG")
+    background.save(output, format="PNG")
     output.seek(0)
     return send_file(output, mimetype="image/png")
