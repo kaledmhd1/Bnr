@@ -1,51 +1,42 @@
 from flask import Flask, request, send_file
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
 
 app = Flask(__name__)
 
-AVATAR_SIZE = (60, 60)  # آفاتار صغير جداً
-
+# مقاسات الصورة النهائية ستكون نفس الخلفية
 def fetch_image(url):
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            return Image.open(BytesIO(response.content)).convert("RGBA")
-    except Exception as e:
-        print(f"خطأ في جلب الصورة: {e}")
-    return None
+    response = requests.get(url)
+    return Image.open(BytesIO(response.content)).convert("RGBA")
 
 @app.route("/bnr")
-def generate_banner():
+def banner():
     uid = request.args.get("uid")
     region = request.args.get("region")
 
-    # خلفية المستخدم (بحجمها الأصلي)
-    background_url = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
-    background = fetch_image(background_url)
-    if background is None:
-        return "فشل في تحميل الخلفية", 400
+    # جلب الخلفية
+    bg_url = "https://i.ibb.co/LDpHSqVY/IMG-0920.webp"
+    background = fetch_image(bg_url)
+    WIDTH, HEIGHT = background.size  # نحافظ على الحجم الأصلي
 
-    # آفاتار اللاعب
-    avatar_url = f"https://freefireinfo.vercel.app/icon?id=900000013"
+    # إنشاء صورة جديدة بنفس حجم الخلفية
+    img = Image.new("RGBA", (WIDTH, HEIGHT))
+    img.paste(background, (0, 0))
+
+    # جلب الأفاتار وتصغيره جدًا
+    avatar_id = "900000013"
+    avatar_url = f"https://freefireinfo.vercel.app/icon?id={avatar_id}"
     avatar = fetch_image(avatar_url)
-    if avatar is None:
-        return "فشل في تحميل صورة الآفاتار", 400
+    avatar = avatar.resize((60, 48))  # تصغير قوي
 
-    # تصغير الآفاتار
-    avatar = avatar.resize(AVATAR_SIZE)
+    # وضع الأفاتار مكان المربع الأحمر (أعلى اليسار مثلًا)
+    avatar_x = 20
+    avatar_y = 20
+    img.paste(avatar, (avatar_x, avatar_y), avatar)
 
-    # وضع الآفاتار مكان المربع الأحمر (تعديل هذه الإحداثيات حسب مكانه)
-    avatar_x = 670
-    avatar_y = 110
-    background.paste(avatar, (avatar_x, avatar_y), avatar)
-
-    # تجهيز الصورة للإرسال
+    # إرسال الصورة
     output = BytesIO()
-    background.save(output, format="PNG")
+    img.save(output, format="PNG")
     output.seek(0)
     return send_file(output, mimetype="image/png")
-
-if __name__ == "__main__":
-    app.run(debug=True)
