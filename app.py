@@ -5,13 +5,17 @@ import requests
 
 app = Flask(__name__)
 
-# حجم الصورة النهائية حسب المرجع
+# إعدادات الصورة
 WIDTH, HEIGHT = 2048, 512
 AVATAR_SIZE = (512, 412)
-AVATAR_POSITION = (0, 100)  # مكان الأفاتار حسب الصورة المرجعية
+AVATAR_POSITION = (0, 100)  # موضع الأفاتار حسب الصورة المرجعية
+
+# ✏️ ضع هنا رابط الصورة التي حصلت عليها (رابط مباشر من imgur)
+BACKGROUND_IMAGE_URL = "https://i.imgur.com/o5KH4I9.png"  # ← غيّرها برابطك لو مختلف
 
 def fetch_image(url, size=None):
     try:
+        print(f"جلب الصورة من: {url}")
         res = requests.get(url, timeout=5)
         res.raise_for_status()
         img = Image.open(BytesIO(res.content)).convert("RGBA")
@@ -19,11 +23,11 @@ def fetch_image(url, size=None):
             img = img.resize(size, Image.LANCZOS)
         return img
     except Exception as e:
-        print(f"Error fetching image: {e}")
+        print(f"خطأ في جلب الصورة: {e}")
         return None
 
 @app.route('/bnr')
-def generate_avatar_only():
+def generate_avatar_on_custom_background():
     uid = request.args.get("uid")
     region = request.args.get("region", "me")
 
@@ -36,19 +40,20 @@ def generate_avatar_only():
         res = requests.get(api_url, timeout=5).json()
         avatar_id = res.get("basicInfo", {}).get("headPic", 900000013)
     except Exception as e:
-        return f"❌ فشل في جلب البيانات: {e}", 500
+        return f"❌ فشل في جلب بيانات اللاعب: {e}", 500
 
-    # إنشاء صورة خلفية سوداء فقط
-    img = Image.new("RGBA", (WIDTH, HEIGHT), (25, 25, 25))
+    # جلب الخلفية
+    background = fetch_image(BACKGROUND_IMAGE_URL, (WIDTH, HEIGHT))
+    if not background:
+        return "❌ فشل في تحميل الخلفية", 500
 
     # جلب صورة الأفاتار
     avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
     if avatar_img:
-        img.paste(avatar_img, AVATAR_POSITION, avatar_img)
+        background.paste(avatar_img, AVATAR_POSITION, avatar_img)
 
-    # إخراج الصورة
     output = BytesIO()
-    img.save(output, format='PNG')
+    background.save(output, format='PNG')
     output.seek(0)
     return send_file(output, mimetype='image/png')
 
