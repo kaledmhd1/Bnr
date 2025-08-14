@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, abort
+from flask import Flask, request, send_file
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
@@ -90,15 +90,17 @@ def generate_avatar_only():
     if not uid:
         return "يرجى تحديد UID", 400
 
+    # جلب معلومات اللاعب من الرابط الجديد
     try:
-        api_url = f"https://razor-info.vercel.app/player-info?uid={uid}&region=me"
+        api_url = f"https://infor-bngx-ff.vercel.app/get?uid={uid}"
         res = requests.get(api_url, timeout=5)
         res.raise_for_status()
         data = res.json()
-        nickname = data["basicInfo"]["nickname"]
-        likes = data["basicInfo"]["liked"]
-        level = data["basicInfo"]["level"]
-        avatar_id = data["basicInfo"]["headPic"]
+        account_info = data.get("AccountInfo", {})
+        nickname = account_info.get("AccountName", "Unknown")
+        likes = account_info.get("AccountLikes", 0)
+        level = account_info.get("AccountLevel", 0)
+        avatar_id = account_info.get("AccountAvatarId")
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
@@ -150,3 +152,4 @@ def generate_avatar_only():
     img.save(output, format='PNG')
     output.seek(0)
     return send_file(output, mimetype='image/png')
+
