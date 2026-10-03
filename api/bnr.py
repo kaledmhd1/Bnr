@@ -18,7 +18,10 @@ FONT_FALLBACKS = [
 ]
 SECRET_KEY = "BNGX"
 
-# تحميل الخطوط مسبقًا
+# ✅ API الجديد
+API_URL = "https://sheihk-info-ob55.onrender.com/Sheihk-info?uid={uid}"
+
+
 def load_fonts(sizes):
     fonts = {"primary": {}, "fallbacks": []}
     for size in sizes:
@@ -36,7 +39,9 @@ def load_fonts(sizes):
         fonts["fallbacks"].append(fallback_fonts)
     return fonts
 
+
 fonts = load_fonts([30, 35, 40, 50])
+
 
 def char_in_font(char, font):
     try:
@@ -44,6 +49,7 @@ def char_in_font(char, font):
         return glyph.getbbox() is not None
     except:
         return False
+
 
 def smart_draw_text(draw, position, text, font_dict, size, fill):
     x, y = position
@@ -67,6 +73,7 @@ def smart_draw_text(draw, position, text, font_dict, size, fill):
         char_width = font_to_use.getbbox(char)[2] - font_to_use.getbbox(char)[0]
         x += char_width
 
+
 def fetch_image(url, size=None):
     try:
         res = requests.get(url, timeout=5)
@@ -79,6 +86,20 @@ def fetch_image(url, size=None):
         print(f"Error fetching image: {e}")
         return None
 
+
+def format_number(num):
+    """تحويل الأرقام الكبيرة لصيغة مختصرة: 4163007 -> 4.16M"""
+    try:
+        num = int(num)
+    except:
+        return "0"
+    if num >= 1_000_000:
+        return f"{num / 1_000_000:.2f}M".rstrip("0").rstrip(".")
+    elif num >= 1_000:
+        return f"{num / 1_000:.2f}K".rstrip("0").rstrip(".")
+    return str(num)
+
+
 @app.route('/bnr')
 def generate_avatar_only():
     uid = request.args.get("uid")
@@ -90,20 +111,48 @@ def generate_avatar_only():
     if not uid:
         return "يرجى تحديد UID", 400
 
-    # جلب معلومات اللاعب من الرابط الجديد
+    # ============================================
+    # ✅ جلب معلومات اللاعب من الـ API الجديد
+    # ============================================
     try:
-        api_url = f"https://infor-bngx-ff.vercel.app/get?uid={uid}"
-        res = requests.get(api_url, timeout=5)
+        api_url = API_URL.format(uid=uid)
+        res = requests.get(api_url, timeout=15)
         res.raise_for_status()
         data = res.json()
-        account_info = data.get("AccountInfo", {})
-        nickname = account_info.get("AccountName", "Unknown")
-        likes = account_info.get("AccountLikes", 0)
-        level = account_info.get("AccountLevel", 0)
-        avatar_id = account_info.get("AccountAvatarId")
+
+        basic_info = data.get("basic_info", {})
+        profile_info = data.get("profile_info", {})
+        clan_info = data.get("clan_basic_info", {})
+        pet_info = data.get("pet_info", {})
+        social_info = data.get("social_info", {})
+
+        # استخراج البيانات
+        nickname = basic_info.get("nickname", "Unknown")
+        level = basic_info.get("level", 0)
+        likes = basic_info.get("liked", 0)          # ✅ موجود في الرد الجديد
+        region = basic_info.get("region", "??")
+        exp = basic_info.get("exp", 0)
+        ranking_points = basic_info.get("ranking_points", 0)
+        cs_ranking_points = basic_info.get("cs_ranking_points", 0)
+        avatar_id = profile_info.get("avatar_id")
+
+        # بيانات إضافية
+        clan_name = clan_info.get("clan_name", "")
+        signature = social_info.get("signature", "")
+
+        if not avatar_id:
+            return "❌ لا يوجد أفاتار لهذا الحساب", 500
+
+    except requests.exceptions.Timeout:
+        return "❌ انتهت مهلة الاتصال بالـ API (قد يكون السيرفر نائماً، أعد المحاولة)", 500
+    except requests.exceptions.HTTPError as e:
+        return f"❌ خطأ في الـ API (HTTP {e.response.status_code})", 500
     except Exception as e:
         return f"❌ فشل في جلب البيانات: {e}", 500
 
+    # ============================================
+    # تحميل الخلفية
+    # ============================================
     bg_img = fetch_image("https://i.postimg.cc/L4PQBgmx/IMG-20250807-042134-670.jpg")
     if not bg_img:
         return "❌ فشل في تحميل الخلفية", 500
@@ -111,20 +160,35 @@ def generate_avatar_only():
     img = bg_img.copy()
     draw = ImageDraw.Draw(img)
 
-    avatar_img = fetch_image(f"https://freefireinfo.vercel.app/icon?id={avatar_id}", AVATAR_SIZE)
+    # ============================================
+    # تحميل الأفاتار
+    # ============================================
+    avatar_img = fetch_image(
+        f"https://freefireinfo.vercel.app/icon?id={avatar_id}",
+        AVATAR_SIZE
+    )
     avatar_x, avatar_y = 90, 82
     if avatar_img:
         img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
 
+    # ============================================
+    # رسم المستوى
+    # ============================================
     level_text = f"Lv. {level}"
     level_x = avatar_x - 40
     level_y = avatar_y + 160
     smart_draw_text(draw, (level_x, level_y), level_text, fonts, 50, "black")
 
+    # ============================================
+    # رسم الاسم
+    # ============================================
     nickname_x = avatar_x + AVATAR_SIZE[0] + 80
     nickname_y = avatar_y - 3
     smart_draw_text(draw, (nickname_x, nickname_y), nickname, fonts, 50, "black")
 
+    # ============================================
+    # رسم UID
+    # ============================================
     bbox_uid = fonts["primary"][35].getbbox(uid)
     text_w = bbox_uid[2] - bbox_uid[0]
     text_h = bbox_uid[3] - bbox_uid[1]
@@ -133,13 +197,19 @@ def generate_avatar_only():
     text_y = img_h - text_h - 17
     smart_draw_text(draw, (text_x, text_y), uid, fonts, 35, "white")
 
-    likes_text = f"{likes}"
+    # ============================================
+    # رسم اللايكات (✅ من الرد الجديد)
+    # ============================================
+    likes_text = format_number(likes)
     bbox_likes = fonts["primary"][40].getbbox(likes_text)
     likes_w = bbox_likes[2] - bbox_likes[0]
     likes_y = text_y - (bbox_likes[3] - bbox_likes[1]) - 25
     likes_x = img_w - likes_w - 60
     smart_draw_text(draw, (likes_x, likes_y), likes_text, fonts, 40, "black")
 
+    # ============================================
+    # رسم شعار المطور
+    # ============================================
     dev_text = "DEV BY : BNGX"
     bbox_dev = fonts["primary"][30].getbbox(dev_text)
     dev_w = bbox_dev[2] - bbox_dev[0]
@@ -148,8 +218,14 @@ def generate_avatar_only():
     dev_y = padding
     smart_draw_text(draw, (dev_x, dev_y), dev_text, fonts, 30, "white")
 
+    # ============================================
+    # الإخراج
+    # ============================================
     output = BytesIO()
     img.save(output, format='PNG')
     output.seek(0)
     return send_file(output, mimetype='image/png')
 
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
